@@ -36,14 +36,55 @@ class CropSimilarityModel(nn.Module):
         return nn.functional.normalize(projected, dim=1)
 
 
+# ── Checkpoint helpers ────────────────────────────────────────────────────────
+
+def save_checkpoint(model, optimizer, epoch, phase, loss, checkpoint_dir):
+    """Save model + optimizer state after every epoch."""
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    path = os.path.join(checkpoint_dir, f"checkpoint_phase{phase}_epoch{epoch+1}.pt")
+    torch.save({
+        "epoch":       epoch,
+        "phase":       phase,
+        "model_state": model.state_dict(),
+        "optim_state": optimizer.state_dict(),
+        "loss":        loss,
+    }, path)
+    print(f"  ✓ Checkpoint saved → {path}")
+    return path
+
+
+def find_latest_checkpoint(checkpoint_dir):
+    """Return the latest checkpoint dict or None if no checkpoints exist."""
+    if not os.path.isdir(checkpoint_dir):
+        return None
+    files = [f for f in os.listdir(checkpoint_dir) if f.startswith("checkpoint_") and f.endswith(".pt")]
+    if not files:
+        return None
+
+    # Sort by phase then epoch
+    def _key(name):
+        parts = name.replace(".pt", "").split("_")
+        phase = int(parts[1].replace("phase", ""))
+        epoch = int(parts[2].replace("epoch", ""))
+        return (phase, epoch)
+
+    files.sort(key=_key)
+    latest = files[-1]
+    path   = os.path.join(checkpoint_dir, latest)
+    ckpt   = torch.load(path, map_location="cpu")
+    print(f"  ✓ Resuming from checkpoint → {path}  (phase {ckpt['phase']}, epoch {ckpt['epoch']+1}, loss {ckpt['loss']:.4f})")
+    return ckpt
+
+
 # ── Training ──────────────────────────────────────────────────────────────────
 
-def train(data_dir: str = "data/raw",
-          epochs: int = 10,
-          batch_size: int = 16,
-          save_path: str = "data/embeddings/fine_tuned_model.pt"):
+def train(data_dir:        str = "data/raw",
+          epochs:          int = 10,
+          batch_size:      int = 16,
+          save_path:       str = "data/embeddings/fine_tuned_model.pt",
+          checkpoint_dir:  str = "data/embeddings/checkpoints"):
 
-    # Preprocessing
+    # ── Preprocessing ──
     transform = transforms.Compose([
         transforms.Resize(256),
         transforms.CenterCrop(224),
@@ -54,66 +95,98 @@ def train(data_dir: str = "data/raw",
         ),
     ])
 
-    # Dataset and dataloader
+    # ── Dataset ──
     dataset    = TripletDataset(data_dir, transform=transform)
     dataloader = DataLoader(dataset, batch_size=batch_size,
                             shuffle=True, num_workers=0)
 
-    # Model
+    # ── Model + loss ──
     model     = CropSimilarityModel()
     criterion = nn.TripletMarginLoss(margin=0.3)
 
-    # Phase 1 — freeze backbone, only train projector
-    for param in model.backbone.parameters():
-        param.requires_grad = False
+    # ── Check for existing checkpoint ──
+    ckpt         = find_latest_checkpoint(checkpoint_dir)
+    start_phase  = 1
+    start_epoch  = 0
 
-    optimizer = torch.optim.Adam(model.projector.parameters(), lr=1e-3)
+    if ckpt is not None:
+        model.load_state_dict(ckpt["model_state"])
+        start_phase = ckpt["phase"]
+        start_epoch = ckpt["epoch"] + 1          # resume AFTER last saved epoch
+        print(f"  Resuming training from Phase {start_phase}, Epoch {start_epoch + 1}")
 
-    print("\nPhase 1 — Training projector only (backbone frozen)")
-    print("=" * 55)
+    # ══════════════════════════════════════════════════════════════════════════
+    # PHASE 1 — freeze backbone, train projector only
+    # ══════════════════════════════════════════════════════════════════════════
+    phase1_epochs = epochs // 2   # 0-4  (epochs 1-5)
 
-    for epoch in range(epochs // 2):
-        total_loss = 0
-        for anchor, positive, negative in tqdm(dataloader,
-                                                desc=f"Epoch {epoch+1}"):
-            optimizer.zero_grad()
-            loss = criterion(model(anchor), model(positive), model(negative))
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item()
+    if start_phase == 1 and start_epoch < phase1_epochs:
 
-        avg_loss = total_loss / len(dataloader)
-        print(f"Epoch {epoch+1} — Loss: {avg_loss:.4f}")
+        for param in model.backbone.parameters():
+            param.requires_grad = False
 
-    # Phase 2 — unfreeze last N layers, fine tune entire model
-    print("\nPhase 2 — Fine-tuning backbone (last layers unfrozen)")
-    print("=" * 55)
+        optimizer = torch.optim.Adam(model.projector.parameters(), lr=1e-3)
 
-    for param in model.backbone.parameters():
-        param.requires_grad = True
+        if ckpt is not None and ckpt["phase"] == 1:
+            optimizer.load_state_dict(ckpt["optim_state"])
 
-    optimizer = torch.optim.Adam([
-        {"params": model.backbone.parameters(), "lr": 1e-5},
-        {"params": model.projector.parameters(), "lr": 1e-4}
-    ])
+        print("\nPhase 1 — Training projector only (backbone frozen)")
+        print("=" * 55)
 
-    for epoch in range(epochs // 2, epochs):
-        total_loss = 0
-        for anchor, positive, negative in tqdm(dataloader,
-                                                desc=f"Epoch {epoch+1}"):
-            optimizer.zero_grad()
-            loss = criterion(model(anchor), model(positive), model(negative))
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item()
+        for epoch in range(start_epoch, phase1_epochs):
+            total_loss = 0
+            for anchor, positive, negative in tqdm(dataloader, desc=f"Epoch {epoch+1}"):
+                optimizer.zero_grad()
+                loss = criterion(model(anchor), model(positive), model(negative))
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item()
 
-        avg_loss = total_loss / len(dataloader)
-        print(f"Epoch {epoch+1} — Loss: {avg_loss:.4f}")
+            avg_loss = total_loss / len(dataloader)
+            print(f"Epoch {epoch+1} — Loss: {avg_loss:.4f}")
+            save_checkpoint(model, optimizer, epoch, phase=1, loss=avg_loss, checkpoint_dir=checkpoint_dir)
 
-    # Save model
+        start_epoch = 0   # reset for Phase 2
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # PHASE 2 — unfreeze backbone, fine-tune everything
+    # ══════════════════════════════════════════════════════════════════════════
+    phase2_epochs = epochs // 2   # 5-9  (epochs 6-10)
+
+    if start_phase <= 2:
+
+        for param in model.backbone.parameters():
+            param.requires_grad = True
+
+        optimizer = torch.optim.Adam([
+            {"params": model.backbone.parameters(),  "lr": 1e-5},
+            {"params": model.projector.parameters(), "lr": 1e-4},
+        ])
+
+        if ckpt is not None and ckpt["phase"] == 2:
+            optimizer.load_state_dict(ckpt["optim_state"])
+            start_epoch = ckpt["epoch"] + 1
+
+        print("\nPhase 2 — Fine-tuning backbone (last layers unfrozen)")
+        print("=" * 55)
+
+        for epoch in range(start_epoch, phase2_epochs):
+            total_loss = 0
+            for anchor, positive, negative in tqdm(dataloader, desc=f"Epoch {epoch+1}"):
+                optimizer.zero_grad()
+                loss = criterion(model(anchor), model(positive), model(negative))
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item()
+
+            avg_loss = total_loss / len(dataloader)
+            print(f"Epoch {epoch+1} — Loss: {avg_loss:.4f}")
+            save_checkpoint(model, optimizer, epoch, phase=2, loss=avg_loss, checkpoint_dir=checkpoint_dir)
+
+    # ── Save final model ──
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     torch.save(model.state_dict(), save_path)
-    print(f"\nModel saved to {save_path}")
+    print(f"\n✓ Final model saved → {save_path}")
 
 
 if __name__ == "__main__":
