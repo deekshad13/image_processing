@@ -81,8 +81,8 @@ def find_latest_checkpoint(checkpoint_dir):
 def train(data_dir:        str = "data/raw",
           epochs:          int = 10,
           batch_size:      int = 16,
-          save_path:       str = "data/embeddings/fine_tuned_model.pt",
-          checkpoint_dir:  str = "data/embeddings/checkpoints"):
+          save_path:       str = "/content/drive/MyDrive/rootstock/fine_tuned_model.pt",
+          checkpoint_dir:  str = "/content/drive/MyDrive/rootstock/checkpoints"):
 
     # ── Preprocessing ──
     transform = transforms.Compose([
@@ -166,6 +166,8 @@ def train(data_dir:        str = "data/raw",
         if ckpt is not None and ckpt["phase"] == 2:
             optimizer.load_state_dict(ckpt["optim_state"])
             start_epoch = ckpt["epoch"] + 1
+        else:
+            start_epoch = 0  # Reset to 0 when entering Phase 2 fresh from Phase 1
 
         print("\nPhase 2 — Fine-tuning backbone (last layers unfrozen)")
         print("=" * 55)
