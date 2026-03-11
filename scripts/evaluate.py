@@ -109,7 +109,7 @@ def evaluate(gallery, model=None, use_finetuned=False, k=3, n_queries=5):
 
                 # Map symptom folder name to gallery key
                 gallery_key = symptom.replace(" ", "_")
-                matched_key = next((k for k in gallery if k.lower() == gallery_key.lower()), None)
+                matched_key = next((k for k in gallery if k.lower().replace(" ", "_") == symptom.lower().replace(" ", "_")), None)
                 if matched_key is None:
                     continue
 
