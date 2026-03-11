@@ -69,7 +69,7 @@ def build_finetuned_gallery(data_dir, model):
 
 
 # ── Precision@K ───────────────────────────────────────────────────────────────
-def precision_at_k(gallery, query_symptom, query_embedding, k=3):
+def recall_at_k(gallery, query_symptom, query_embedding, k=3):
     scores = []
     for symptom, data in gallery.items():
         for i, ref_emb in enumerate(data["embeddings"]):
@@ -77,8 +77,9 @@ def precision_at_k(gallery, query_symptom, query_embedding, k=3):
             scores.append((sim, symptom))
     scores.sort(reverse=True)
     top_k = scores[:k]
-    correct = sum(1 for _, s in top_k if s == query_symptom)
-    return correct / k
+    correct_in_top_k = sum(1 for _, s in top_k if s == query_symptom)
+    total_relevant = len(gallery[query_symptom]["embeddings"])
+    return correct_in_top_k / total_relevant if total_relevant > 0 else 0.0
 
 
 # ── Evaluate ──────────────────────────────────────────────────────────────────
