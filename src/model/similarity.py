@@ -40,9 +40,9 @@ def find_top_matches(query_embedding: np.ndarray,
 
 
 def _get_action_label(similarity: float) -> str:
-    if similarity >= 75:
+    if similarity >= 80:
         return "Take Action"
-    elif similarity >= 50:
+    elif similarity >= 60:
         return "Monitor"
     else:
-        return "Low concern"
+        return "Low Concern"
