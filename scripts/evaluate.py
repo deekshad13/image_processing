@@ -61,7 +61,6 @@ def build_finetuned_gallery(data_dir, model):
                 gallery[symptom]["labels"].append(symptom)
             except Exception:
                 continue
-    # Convert lists to numpy arrays
     for symptom in gallery:
         gallery[symptom]["embeddings"] = np.array(gallery[symptom]["embeddings"])
     print(f"Fine-tuned gallery built: {len(gallery)} symptoms")
@@ -69,10 +68,23 @@ def build_finetuned_gallery(data_dir, model):
 
 
 # ── Precision@K ───────────────────────────────────────────────────────────────
+def precision_at_k(gallery, query_symptom, query_embedding, k=3):
+    scores = []
+    for symptom, data in gallery.items():
+        for ref_emb in data["embeddings"]:
+            sim = cosine_similarity(query_embedding, ref_emb)
+            scores.append((sim, symptom))
+    scores.sort(reverse=True)
+    top_k = scores[:k]
+    correct = sum(1 for _, s in top_k if s == query_symptom)
+    return correct / k
+
+
+# ── Recall@K ──────────────────────────────────────────────────────────────────
 def recall_at_k(gallery, query_symptom, query_embedding, k=3):
     scores = []
     for symptom, data in gallery.items():
-        for i, ref_emb in enumerate(data["embeddings"]):
+        for ref_emb in data["embeddings"]:
             sim = cosine_similarity(query_embedding, ref_emb)
             scores.append((sim, symptom))
     scores.sort(reverse=True)
@@ -85,7 +97,8 @@ def recall_at_k(gallery, query_symptom, query_embedding, k=3):
 # ── Evaluate ──────────────────────────────────────────────────────────────────
 def evaluate(gallery, model=None, use_finetuned=False, k=3, n_queries=5):
     all_precisions = []
-    data_dir = "data/raw"
+    all_recalls    = []
+    data_dir       = "data/raw"
 
     for symptom in os.listdir(data_dir):
         symptom_dir = os.path.join(data_dir, symptom)
@@ -99,7 +112,8 @@ def evaluate(gallery, model=None, use_finetuned=False, k=3, n_queries=5):
         ][:n_queries]
 
         symptom_precisions = []
-        symptom_recalls =[]
+        symptom_recalls    = []
+
         for img_path in images:
             try:
                 if use_finetuned:
@@ -109,25 +123,30 @@ def evaluate(gallery, model=None, use_finetuned=False, k=3, n_queries=5):
                 else:
                     query_emb = get_embedding(img_path, model)
 
-                # Map symptom folder name to gallery key
-                gallery_key = symptom.replace(" ", "_")
-                matched_key = next((k for k in gallery if k.lower().replace(" ", "_") == symptom.lower().replace(" ", "_")), None)
+                matched_key = next(
+                    (key for key in gallery
+                     if key.lower().replace(" ", "_") == symptom.lower().replace(" ", "_")),
+                    None
+                )
                 if matched_key is None:
                     continue
 
                 p = precision_at_k(gallery, matched_key, query_emb, k=k)
-                symptom_precisions.append(p)
                 r = recall_at_k(gallery, matched_key, query_emb, k=k)
+                symptom_precisions.append(p)
                 symptom_recalls.append(r)
+
             except Exception:
                 continue
 
         if symptom_precisions:
-            avg = np.mean(symptom_precisions)
-            all_precisions.append(avg)
-            print(f"  {symptom:<30} Precision@{k} = {avg:.2f}")
+            avg_p = np.mean(symptom_precisions)
+            avg_r = np.mean(symptom_recalls)
+            all_precisions.append(avg_p)
+            all_recalls.append(avg_r)
+            print(f"  {symptom:<30} Precision@{k} = {avg_p:.2f}  Recall@{k} = {avg_r:.2f}")
 
-    return np.mean(all_precisions) if all_precisions else 0.0
+    return np.mean(all_precisions), np.mean(all_recalls)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -137,11 +156,12 @@ if __name__ == "__main__":
 
     # Baseline
     print("\n── Baseline DINOv2 ──────────────────────────────")
-    baseline_gallery = load_baseline_gallery(embeddings_dir)
-    baseline_model   = load_dinov2()
-    baseline_score   = evaluate(baseline_gallery, model=baseline_model,
-                                use_finetuned=False, k=3, n_queries=5)
-    print(f"\nBaseline Precision@3:   {baseline_score:.4f}")
+    baseline_gallery  = load_baseline_gallery(embeddings_dir)
+    baseline_model    = load_dinov2()
+    baseline_p3, baseline_r3 = evaluate(
+        baseline_gallery, model=baseline_model, use_finetuned=False, k=3, n_queries=5
+    )
+    print(f"\nBaseline  Precision@3: {baseline_p3:.4f}  Recall@3: {baseline_r3:.4f}")
 
     # Fine-tuned
     print("\n── Fine-tuned Model ─────────────────────────────")
@@ -151,11 +171,14 @@ if __name__ == "__main__":
     )
     finetuned_model.eval()
     finetuned_gallery = build_finetuned_gallery(data_dir, finetuned_model)
-    finetuned_score   = evaluate(finetuned_gallery, model=finetuned_model,
-                                 use_finetuned=True, k=3, n_queries=5)
-    print(f"\nFine-tuned Precision@3: {finetuned_score:.4f}")
+    finetuned_p3, finetuned_r3 = evaluate(
+        finetuned_gallery, model=finetuned_model, use_finetuned=True, k=3, n_queries=5
+    )
+    print(f"\nFine-tuned Precision@3: {finetuned_p3:.4f}  Recall@3: {finetuned_r3:.4f}")
 
     # Comparison
-    improvement = (finetuned_score - baseline_score) / baseline_score * 100
+    p_improvement = (finetuned_p3 - baseline_p3) / baseline_p3 * 100
+    r_improvement = (finetuned_r3 - baseline_r3) / baseline_r3 * 100
     print(f"\n{'='*50}")
-    print(f"Improvement: {improvement:.1f}%")
+    print(f"Precision Improvement: {p_improvement:.1f}%")
+    print(f"Recall Improvement:    {r_improvement:.1f}%")
