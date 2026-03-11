@@ -99,6 +99,7 @@ def evaluate(gallery, model=None, use_finetuned=False, k=3, n_queries=5):
         ][:n_queries]
 
         symptom_precisions = []
+        symptom_recalls =[]
         for img_path in images:
             try:
                 if use_finetuned:
@@ -116,6 +117,8 @@ def evaluate(gallery, model=None, use_finetuned=False, k=3, n_queries=5):
 
                 p = precision_at_k(gallery, matched_key, query_emb, k=k)
                 symptom_precisions.append(p)
+                r = recall_at_k(gallery, matched_key, query_emb, k=k)
+                symptom_recalls.append(r)
             except Exception:
                 continue
 
