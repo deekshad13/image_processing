@@ -7,6 +7,10 @@ from PIL import Image
 import torchvision.transforms as transforms
 import torch
 from src.api.schemas import CompareResponse, MatchResult, SymptomDetail
+import cv2
+import numpy as np
+from fastapi import HTTPException
+
 router = APIRouter()
 
 # Load model and gallery once at startup
@@ -43,10 +47,43 @@ def get_gallery():
     symptoms = os.listdir("data/raw")
     return {"symptoms": symptoms}
 
+ALLOWED_FORMATS = {"image/jpeg", "image/png", "image/jpg"}
+MAX_FILE_SIZE_MB = 100
+
+def validate_image(contents: bytes, content_type: str):
+    # Check file format
+    if content_type not in ALLOWED_FORMATS:
+        raise HTTPException(status_code=400, detail="Invalid file format. Only JPG and PNG allowed.")
+
+    # Check file size
+    size_mb = len(contents) / (1024 * 1024)
+    if size_mb > MAX_FILE_SIZE_MB:
+        raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE_MB}MB.")
+
+    # Convert to numpy array for image checks
+    nparr = np.frombuffer(contents, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(status_code=400, detail="Could not read image. File may be corrupted.")
+
+    # Check brightness
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    brightness = np.mean(gray)
+    if brightness < 30:
+        raise HTTPException(status_code=400, detail="Image is too dark. Please retake in better lighting.")
+    if brightness > 240:
+        raise HTTPException(status_code=400, detail="Image is too bright. Please avoid direct sunlight.")
+
+    # Check blurriness using Laplacian variance
+    laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+    if laplacian_var < 50:
+        raise HTTPException(status_code=400, detail="Image is too blurry. Please retake.")
+    
 @router.post("/compare", response_model=CompareResponse)
 async def compare_image(file: UploadFile = File(...)):
     # Read and convert uploaded image to embedding
     contents = await file.read()
+    validate_image(contents, file.content_type)
     img = Image.open(io.BytesIO(contents)).convert("RGB")
     img_tensor = transform(img).unsqueeze(0)
     with torch.no_grad():
@@ -69,7 +106,7 @@ async def compare_image(file: UploadFile = File(...)):
         if symptom in seen:
             continue
         seen.add(symptom)
-        sim_pct = round(float(sim) * 100, 1)
+        sim_pct = round(float(sim), 1)
         if sim_pct >= 80:
             severity = "high"
             action = "Take Action — consult an expert immediately"
@@ -90,10 +127,15 @@ async def compare_image(file: UploadFile = File(...)):
         ))
 
     return CompareResponse(
-        status="success",
-        plant_part_detected="unknown",
-        matches=matches
-    )
+    status="success",
+    plant_part_detected="unknown",
+    matches=matches,
+    thresholds={
+        "high_match": "80%+ — Likely this condition",
+        "medium_match": "60-79% — Possible, monitor closely",
+        "low_match": "Below 60% — Unlikely match"
+    }
+)
 
 @router.get("/gallery/{symptom_id}")
 def get_symptom_detail(symptom_id: str):

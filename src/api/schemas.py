@@ -1,5 +1,5 @@
 from  pydantic import BaseModel
-from typing import List
+from typing import List, Dict 
 
 class MatchResult(BaseModel):
     symptom: str
@@ -13,6 +13,7 @@ class CompareResponse(BaseModel):
     status: str
     matches: List[MatchResult]
     plant_part_detected: str
+    thresholds : Dict[str,str]
 
 class SymptomDetail(BaseModel):
     name:str
