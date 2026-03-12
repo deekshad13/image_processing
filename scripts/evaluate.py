@@ -13,7 +13,6 @@ from src.model.encoder import load_dinov2, get_embedding
 from src.model.similarity import cosine_similarity
 
 
-# ── Transform ─────────────────────────────────────────────────────────────────
 transform = transforms.Compose([
     transforms.Resize(256),
     transforms.CenterCrop(224),
@@ -23,7 +22,7 @@ transform = transforms.Compose([
 ])
 
 
-# ── Load baseline embeddings from .npy files ──────────────────────────────────
+#  Load baseline embeddings from .npy files
 def load_baseline_gallery(embeddings_dir):
     gallery = {}
     for symptom in os.listdir(embeddings_dir):
@@ -42,7 +41,7 @@ def load_baseline_gallery(embeddings_dir):
     return gallery
 
 
-# ── Build fine-tuned gallery on the fly ───────────────────────────────────────
+# Build fine-tuned gallery on the fly
 def build_finetuned_gallery(data_dir, model):
     gallery = defaultdict(lambda: {"embeddings": [], "labels": []})
     for symptom in os.listdir(data_dir):
@@ -67,7 +66,7 @@ def build_finetuned_gallery(data_dir, model):
     return dict(gallery)
 
 
-# ── Precision@K ───────────────────────────────────────────────────────────────
+# Precision@K 
 def precision_at_k(gallery, query_symptom, query_embedding, k=3):
     scores = []
     for symptom, data in gallery.items():
@@ -80,7 +79,7 @@ def precision_at_k(gallery, query_symptom, query_embedding, k=3):
     return correct / k
 
 
-# ── Recall@K ──────────────────────────────────────────────────────────────────
+# Recall@K 
 def recall_at_k(gallery, query_symptom, query_embedding, k=3):
     scores = []
     for symptom, data in gallery.items():
@@ -94,7 +93,7 @@ def recall_at_k(gallery, query_symptom, query_embedding, k=3):
     return correct_in_top_k / total_relevant if total_relevant > 0 else 0.0
 
 
-# ── Evaluate ──────────────────────────────────────────────────────────────────
+# Evaluate 
 def evaluate(gallery, model=None, use_finetuned=False, k=3, n_queries=5):
     all_precisions = []
     all_recalls    = []
@@ -149,7 +148,7 @@ def evaluate(gallery, model=None, use_finetuned=False, k=3, n_queries=5):
     return np.mean(all_precisions), np.mean(all_recalls)
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# Main 
 if __name__ == "__main__":
     embeddings_dir = "data/embeddings"
     data_dir       = "data/raw"

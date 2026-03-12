@@ -10,14 +10,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from src.data.dataset import TripletDataset
 
 
-# ── Model ─────────────────────────────────────────────────────────────────────
-
 class CropSimilarityModel(nn.Module):
-    """
-    DINOv2 backbone + a small projection head.
-    Triplet loss pushes same-symptom embeddings closer
-    and different-symptom embeddings further apart.
-    """
+    
     def __init__(self, embed_dim=384, project_dim=128):
         super().__init__()
         self.backbone = torch.hub.load("facebookresearch/dinov2", "dinov2_vits14")
@@ -34,10 +28,8 @@ class CropSimilarityModel(nn.Module):
         return nn.functional.normalize(projected, dim=1)
 
 
-# ── Checkpoint helpers ────────────────────────────────────────────────────────
 
 def save_checkpoint(model, optimizer, epoch, phase, loss, checkpoint_dir):
-    """Save model + optimizer state after every epoch."""
     os.makedirs(checkpoint_dir, exist_ok=True)
     path = os.path.join(checkpoint_dir, f"checkpoint_phase{phase}_epoch{epoch+1}.pt")
     torch.save({
@@ -51,7 +43,6 @@ def save_checkpoint(model, optimizer, epoch, phase, loss, checkpoint_dir):
 
 
 def find_latest_checkpoint(checkpoint_dir):
-    """Return the latest checkpoint dict, or None if no checkpoints exist."""
     if not os.path.isdir(checkpoint_dir):
         return None
     files = [
@@ -74,15 +65,12 @@ def find_latest_checkpoint(checkpoint_dir):
     return ckpt
 
 
-# ── Training ──────────────────────────────────────────────────────────────────
-
 def train(data_dir="data/raw",
           epochs=10,
           batch_size=16,
           save_path="data/embeddings/fine_tuned_model.pt",
           checkpoint_dir="data/embeddings/checkpoints"):
 
-    # Preprocessing
     transform = transforms.Compose([
         transforms.Resize(256),
         transforms.CenterCrop(224),
@@ -91,21 +79,17 @@ def train(data_dir="data/raw",
                              std=[0.229, 0.224, 0.225]),
     ])
 
-    # Dataset
     dataset    = TripletDataset(data_dir, transform=transform)
     dataloader = DataLoader(dataset, batch_size=batch_size,
                             shuffle=True, num_workers=0)
 
-    # Model + loss
     model     = CropSimilarityModel()
     criterion = nn.TripletMarginLoss(margin=0.3)
 
-    # Load latest checkpoint
     ckpt           = find_latest_checkpoint(checkpoint_dir)
-    phase1_epochs  = epochs // 2   # 5
-    phase2_epochs  = epochs // 2   # 5
+    phase1_epochs  = epochs // 2   
+    phase2_epochs  = epochs // 2   
 
-    # Determine if Phase 1 is already done
     phase1_done = (
         ckpt is not None and (
             ckpt["phase"] == 2 or
@@ -113,9 +97,7 @@ def train(data_dir="data/raw",
         )
     )
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # PHASE 1 — freeze backbone, train projector only
-    # ══════════════════════════════════════════════════════════════════════════
+    # Phase 1 training
     if not phase1_done:
         for param in model.backbone.parameters():
             param.requires_grad = False
@@ -148,9 +130,7 @@ def train(data_dir="data/raw",
             model.load_state_dict(ckpt["model_state"])
         print("  Phase 1 complete - skipping to Phase 2")
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # PHASE 2 — unfreeze backbone, fine-tune everything
-    # ══════════════════════════════════════════════════════════════════════════
+    # Phase 2 training
     for param in model.backbone.parameters():
         param.requires_grad = True
 
@@ -180,7 +160,7 @@ def train(data_dir="data/raw",
         print(f"Epoch {epoch+1} - Loss: {avg_loss:.4f}")
         save_checkpoint(model, optimizer, epoch, 2, avg_loss, checkpoint_dir)
 
-    # Save final model
+    
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     torch.save(model.state_dict(), save_path)
     print(f"\nFinal model saved -> {save_path}")
