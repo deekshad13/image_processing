@@ -159,9 +159,9 @@ if __name__ == "__main__":
     baseline_gallery  = load_baseline_gallery(embeddings_dir)
     baseline_model    = load_dinov2()
     baseline_p3, baseline_r3 = evaluate(
-        baseline_gallery, model=baseline_model, use_finetuned=False, k=3, n_queries=5
+        baseline_gallery, model=baseline_model, use_finetuned=False, k=5, n_queries=5
     )
-    print(f"\nBaseline  Precision@3: {baseline_p3:.4f}  Recall@3: {baseline_r3:.4f}")
+    print(f"\nBaseline  Precision@5: {baseline_p3:.4f}  Recall@5: {baseline_r3:.4f}")
 
     # Fine-tuned
     print("\n── Fine-tuned Model ─────────────────────────────")
@@ -172,9 +172,9 @@ if __name__ == "__main__":
     finetuned_model.eval()
     finetuned_gallery = build_finetuned_gallery(data_dir, finetuned_model)
     finetuned_p3, finetuned_r3 = evaluate(
-        finetuned_gallery, model=finetuned_model, use_finetuned=True, k=3, n_queries=5
+        finetuned_gallery, model=finetuned_model, use_finetuned=True, k=5, n_queries=5
     )
-    print(f"\nFine-tuned Precision@3: {finetuned_p3:.4f}  Recall@3: {finetuned_r3:.4f}")
+    print(f"\nFine-tuned Precision@5: {finetuned_p3:.4f}  Recall@5: {finetuned_r3:.4f}")
 
     # Comparison
     p_improvement = (finetuned_p3 - baseline_p3) / baseline_p3 * 100
