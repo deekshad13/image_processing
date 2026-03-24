@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from src.api.schemas import CompareResponse, MatchResult, SymptomDetail
 from src.model.encoder import load_dinov2, get_embedding
 from src.model.similarity import cosine_similarity
@@ -8,10 +8,12 @@ import torchvision.transforms as transforms
 import torch
 import cv2
 
+from src.config import RAW_DIR, EMBEDDINGS_DIR
+
 router = APIRouter()
 
 MODEL = load_dinov2()
-EMBEDDINGS_DIR = "data/embeddings"
+EMBEDDINGS_DIR = EMBEDDINGS_DIR
 
 def load_gallery():
     gallery = {}
@@ -24,14 +26,14 @@ def load_gallery():
             continue
         embeddings = np.load(emb_file)
         raw_folder = next(
-            (s for s in os.listdir("data/raw")
+            (s for s in os.listdir(RAW_DIR)
              if s.lower().replace(" ", "_") == symptom.lower().replace(" ", "_")),
             None
         )
         if raw_folder is None:
             continue
         filenames = [
-            f for f in os.listdir(os.path.join("data/raw", raw_folder))
+            f for f in os.listdir(os.path.join(RAW_DIR, raw_folder))
             if f.lower().endswith((".jpg", ".jpeg", ".png"))
         ]
         gallery[symptom] = {
@@ -82,13 +84,13 @@ def health_check():
 
 @router.get("/gallery")
 def get_gallery():
-    symptoms = os.listdir("data/raw")
+    symptoms = os.listdir(RAW_DIR)
     return {"symptoms": symptoms}
 
 
 @router.get("/gallery/{symptom_id}/images")
 def get_symptom_images(symptom_id: str):
-    raw_dir = "data/raw"
+    raw_dir = RAW_DIR
     matched = next(
         (s for s in os.listdir(raw_dir)
          if s.lower().replace(" ", "_") == symptom_id.lower().replace(" ", "_")),
@@ -105,7 +107,7 @@ def get_symptom_images(symptom_id: str):
 
 @router.get("/gallery/{symptom_id}/first-image")
 def get_first_image(symptom_id: str):
-    raw_dir = "data/raw"
+    raw_dir = RAW_DIR
     matched = next(
         (s for s in os.listdir(raw_dir)
          if s.lower().replace(" ", "_") == symptom_id.lower().replace(" ", "_")),
@@ -125,7 +127,7 @@ def get_first_image(symptom_id: str):
 
 @router.get("/gallery/{symptom_id}")
 def get_symptom_detail(symptom_id: str):
-    raw_dir = "data/raw"
+    raw_dir = RAW_DIR
     matched = next(
         (s for s in os.listdir(raw_dir)
          if s.lower().replace(" ", "_") == symptom_id.lower().replace(" ", "_")),
@@ -146,7 +148,7 @@ def get_symptom_detail(symptom_id: str):
 
 
 @router.post("/compare", response_model=CompareResponse)
-async def compare_image(file: UploadFile = File(...)):
+async def compare_image(file: UploadFile = File(...), symptom: str = Form(None)):
     contents = await file.read()
     validate_image(contents, file.content_type)
 
@@ -155,12 +157,21 @@ async def compare_image(file: UploadFile = File(...)):
     with torch.no_grad():
         query_emb = MODEL(img_tensor).squeeze().numpy()
 
+    # Filter gallery to selected symptom if provided
+    if symptom:
+        scores_source = {k: v for k, v in GALLERY.items()
+                         if k.lower().replace(" ", "_") == symptom.lower().replace(" ", "_")}
+        if not scores_source:
+            scores_source = GALLERY
+    else:
+        scores_source = GALLERY
+
     scores = []
-    for symptom, data in GALLERY.items():
+    for sym, data in scores_source.items():
         for i, ref_emb in enumerate(data["embeddings"]):
             sim = cosine_similarity(query_emb, ref_emb)
             filename = data["filenames"][i] if i < len(data["filenames"]) else None
-            scores.append((sim, symptom, filename, data["raw_folder"]))
+            scores.append((sim, sym, filename, data["raw_folder"]))
 
     scores.sort(reverse=True)
 
@@ -168,7 +179,21 @@ async def compare_image(file: UploadFile = File(...)):
     second_sim = round(float(scores[1][0]), 1) if len(scores) > 1 else 0
     gap = best_sim - second_sim
 
-    if best_sim < 70 and gap < 5:
+    # Wrong symptom check for constrained mode
+    if symptom and best_sim < 60:
+        return CompareResponse(
+            status="wrong_symptom",
+            plant_part_detected="unknown",
+            matches=[],
+            thresholds={
+                "high_match": "80%+ — Likely this condition",
+                "medium_match": "60-79% — Possible, monitor closely",
+                "low_match": "Below 60% — Unlikely match"
+            }
+        )
+
+    # Out-of-distribution detection for open mode
+    if not symptom and best_sim < 70 and gap < 5:
         return CompareResponse(
             status="unknown",
             plant_part_detected="unknown",
@@ -197,7 +222,7 @@ async def compare_image(file: UploadFile = File(...)):
         action = "Low Concern — likely not a match"
 
     raw_folder = next(
-        (s for s in os.listdir("data/raw")
+        (s for s in os.listdir(RAW_DIR)
          if s.lower().replace(" ", "_") == best_symptom.lower().replace(" ", "_")),
         best_symptom
     )
@@ -205,10 +230,10 @@ async def compare_image(file: UploadFile = File(...)):
     symptom_scores = [
         (sim, fname, folder) for sim, sym, fname, folder in scores
         if sym == best_symptom and fname is not None
-    ][:10]
+    ][:30]
 
     random.shuffle(symptom_scores)
-    top_3 = symptom_scores[:3]
+    top_3 = symptom_scores[:4]
 
     matches = []
     for i, (sim, fname, folder) in enumerate(top_3):

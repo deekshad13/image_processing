@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rootstalk — Constrained Comparison</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --soil: #2C1A0E; --bark: #5C3D1E; --moss: #3A5C2C; --leaf: #5C8C3A;
+      --lime: #A8C84A; --straw: #E8D5A0; --cream: #F5F0E8;
+      --danger: #C0392B; --warn: #E67E22; --safe: #27AE60;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background-color: var(--cream); color: var(--soil); font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
+    body::before { content: ''; position: fixed; inset: 0; background-image: radial-gradient(ellipse at 20% 20%, rgba(90,140,58,0.08) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(44,26,14,0.06) 0%, transparent 60%); pointer-events: none; z-index: 0; }
+
+    header { position: relative; z-index: 10; background: var(--soil); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid var(--warn); }
+    .logo { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .logo-icon { width: 38px; height: 38px; background: var(--warn); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .logo-text { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--cream); }
+    .logo-sub { font-size: 10px; color: var(--straw); font-family: 'DM Mono', monospace; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+    .header-badge { background: #7B3F00; color: var(--warn); font-family: 'DM Mono', monospace; font-size: 11px; padding: 5px 12px; border-radius: 20px; letter-spacing: 1px; }
+
+    .screen { display: none; position: relative; z-index: 1; }
+    .screen.active { display: block; }
+    main { max-width: 1200px; margin: 0 auto; padding: 30px 24px; }
+
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; background: transparent; border: 2px solid var(--straw); color: var(--bark); padding: 8px 18px; border-radius: 50px; font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer; transition: all 0.2s; margin-bottom: 24px; }
+    .back-btn:hover { border-color: var(--bark); color: var(--soil); }
+
+    /* SCREEN 1 */
+    .gallery-hero { text-align: center; margin-bottom: 40px; }
+    .gallery-hero h1 { font-family: 'DM Serif Display', serif; font-size: clamp(30px, 4vw, 48px); color: var(--soil); margin-bottom: 12px; }
+    .gallery-hero h1 em { color: var(--warn); font-style: italic; }
+    .gallery-hero p { font-size: 16px; color: var(--bark); max-width: 480px; margin: 0 auto; line-height: 1.7; font-weight: 300; }
+    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+    .symptom-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 16px rgba(44,26,14,0.08); cursor: pointer; transition: all 0.3s; animation: fadeIn 0.4s ease both; }
+    .symptom-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(44,26,14,0.14); outline: 2px solid var(--warn); }
+    .symptom-card-img { width: 100%; height: 180px; object-fit: cover; background: var(--straw); display: block; }
+    .symptom-card-placeholder { width: 100%; height: 180px; display: flex; align-items: center; justify-content: center; font-size: 40px; background: linear-gradient(135deg, var(--straw), var(--cream)); }
+    .symptom-card-body { padding: 14px 16px; }
+    .symptom-card-name { font-family: 'DM Serif Display', serif; font-size: 17px; color: var(--soil); margin-bottom: 6px; }
+    .symptom-card-action { font-size: 12px; color: var(--warn); font-family: 'DM Mono', monospace; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ============================================================
+       SCREEN 2 — FIXED Split Layout
+       Both panels share the same fixed height.
+       Left panel: image fills its allotted space with cover.
+       Right panel: scrolls internally if needed.
+    ============================================================ */
+    .split-wrapper {
+      display: flex;
+      gap: 24px;
+      align-items: stretch;
+      /* Fixed total height so both panels are equal */
+      height: 560px;
+    }
+
+    /* Left panel — flex column, fills wrapper height */
+    .split-left {
+      flex: 1;
+      min-width: 0;              /* prevents flex blowout */
+      background: white;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(44,26,14,0.12);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Slideshow occupies all remaining height inside left panel */
+    .slideshow-container {
+      position: relative;
+      flex: 1;                   /* ← grows to fill left panel */
+      min-height: 0;             /* ← allows flex child to shrink */
+      overflow: hidden;
+      background: var(--soil);
+    }
+
+    .compare-slides {
+      display: flex;
+      height: 100%;
+      transition: transform 0.4s ease;
+    }
+
+    /* Each slide image fills the container completely */
+    .compare-slide {
+      min-width: 100%;
+      height: 100%;
+      object-fit: cover;         /* ← key: covers without distortion */
+      flex-shrink: 0;
+      display: block;
+    }
+
+    .slide-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(44,26,14,0.65); color: white; border: none; font-size: 26px; padding: 8px 14px; cursor: pointer; border-radius: 8px; z-index: 10; }
+    .slide-btn:hover { background: rgba(44,26,14,0.9); }
+    .slide-prev { left: 12px; }
+    .slide-next { right: 12px; }
+    .compare-dots { display: flex; justify-content: center; gap: 6px; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 10; }
+    .compare-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.4); cursor: pointer; transition: background 0.2s; }
+    .compare-dot.active { background: white; }
+
+    /* Bottom label strip — fixed height, never grows */
+    .split-left-body {
+      flex-shrink: 0;
+      padding: 14px 20px;
+      border-top: 1px solid var(--straw);
+    }
+    .compare-symptom-name { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--soil); margin-bottom: 3px; }
+    .compare-symptom-desc { font-size: 12px; color: var(--bark); line-height: 1.4; }
+
+    /* Right panel — fixed width, scrolls internally */
+    .split-right {
+      width: 340px;
+      flex-shrink: 0;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 8px 40px rgba(44,26,14,0.12);
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      gap: 14px;
+      overflow-y: auto;          /* scroll if content overflows */
+    }
+
+    .split-right-title { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--bark); letter-spacing: 2px; text-transform: uppercase; padding-bottom: 12px; border-bottom: 1px solid var(--straw); flex-shrink: 0; }
+
+    .upload-section { border: 2px dashed var(--straw); border-radius: 16px; padding: 24px 16px; text-align: center; transition: all 0.3s; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 0; }
+    .upload-section.dragover { border-color: var(--warn); background: rgba(230,126,34,0.04); }
+    .upload-icon { font-size: 36px; animation: float 3s ease-in-out infinite; }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    .upload-section h3 { font-family: 'DM Serif Display', serif; font-size: 17px; color: var(--soil); }
+    .upload-section p { color: var(--bark); font-size: 12px; }
+    .upload-buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .upload-btn { background: var(--soil); color: var(--cream); border: none; padding: 9px 16px; border-radius: 50px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .upload-btn:hover { background: #7B3F00; }
+
+    .preview-container { display: none; text-align: center; flex: 1; min-height: 0; }
+    .preview-container.visible { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .preview-img { width: 100%; flex: 1; min-height: 0; border-radius: 12px; object-fit: cover; box-shadow: 0 6px 20px rgba(44,26,14,0.12); max-height: 260px; }
+    .preview-name { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--bark); }
+    .change-btn { background: transparent; border: 1.5px solid var(--straw); color: var(--bark); padding: 6px 14px; border-radius: 50px; font-size: 12px; cursor: pointer; }
+
+    .analyze-btn { flex-shrink: 0; background: linear-gradient(135deg, #7B3F00, var(--warn)); color: white; border: none; padding: 13px; border-radius: 50px; font-family: 'DM Serif Display', serif; font-size: 16px; cursor: pointer; transition: all 0.3s; box-shadow: 0 6px 20px rgba(230,126,34,0.3); width: 100%; }
+    .analyze-btn:hover:not(:disabled) { transform: translateY(-2px); }
+    .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ============================================================
+       SCREEN 3 — Results: side-by-side layout per mockup
+       Left: user photo + similarity info (fixed width)
+       Right: matches grid (fills remaining space)
+    ============================================================ */
+    .results-layout { display: flex; gap: 24px; align-items: flex-start; }
+
+    /* LEFT PANEL — user photo */
+    .results-left {
+      width: 340px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 20px;
+    }
+    .farmer-photo-card {
+      background: white;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(44,26,14,0.12);
+    }
+    .farmer-photo-header {
+      background: var(--soil); color: var(--cream);
+      font-family: 'DM Mono', monospace; font-size: 11px;
+      padding: 10px 16px; letter-spacing: 2px; text-transform: uppercase;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    /* Explicit clip wrapper so portrait images never overflow */
+    .farmer-photo-wrap {
+      width: 100%; height: 200px;
+      overflow: hidden; position: relative;
+      background: var(--soil);
+    }
+    .farmer-photo-img {
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: center center;
+      display: block;
+    }
+    .farmer-photo-body { padding: 16px 18px; }
+    .farmer-photo-symptom { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--soil); margin-bottom: 2px; }
+    .farmer-photo-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--bark); margin-bottom: 10px; }
+    .farmer-similarity-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--straw); }
+
+    /* Legend inside left panel */
+    .legend-block { margin-top: 16px; background: var(--soil); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .legend-title { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--straw); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; }
+    .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .legend-text { font-size: 12px; color: var(--cream); font-weight: 300; }
+
+    /* RIGHT PANEL — matches */
+    .results-right { flex: 1; min-width: 0; }
+    .results-right-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .results-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--soil); }
+    .results-count { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--bark); background: var(--straw); padding: 5px 12px; border-radius: 20px; }
+
+    /* Matches grid: 2 columns on the right panel */
+    .matches-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+    /* rank-1 spans both columns */
+    .match-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(44,26,14,0.08); transition: all 0.3s; animation: slideUp 0.5s ease both; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .match-card:nth-child(2) { animation-delay: 0.1s; }
+    .match-card:nth-child(3) { animation-delay: 0.2s; }
+    .match-card:hover { transform: translateY(-4px); box-shadow: 0 12px 36px rgba(44,26,14,0.14); }
+    .match-card.rank-1 { border: 2px solid var(--warn); }
+
+    /* Image containers — strict fixed height, overflow hidden clips portrait images */
+    .card-image-container { position: relative; width: 100%; height: 200px; overflow: hidden; background: var(--straw); flex-shrink: 0; }
+    .match-card.rank-1 .card-image-container { height: 200px; }
+    .card-image { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; object-position: center center; display: block; transition: transform 0.4s ease; }
+    .match-card:hover .card-image { transform: scale(1.05); }
+    .card-image-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 44px; background: linear-gradient(135deg, var(--straw), var(--cream)); }
+    .rank-badge { position: absolute; top: 10px; left: 10px; background: var(--soil); color: var(--cream); font-family: 'DM Mono', monospace; font-size: 11px; padding: 4px 10px; border-radius: 20px; }
+    .match-card.rank-1 .rank-badge { background: var(--warn); color: white; font-weight: 500; }
+    .severity-pill { position: absolute; top: 10px; right: 10px; font-family: 'DM Mono', monospace; font-size: 10px; padding: 4px 10px; border-radius: 20px; font-weight: 500; text-transform: uppercase; }
+    .severity-high { background: var(--danger); color: white; }
+    .severity-medium { background: var(--warn); color: white; }
+    .severity-low { background: var(--safe); color: white; }
+    .card-body { padding: 14px 16px; }
+    .card-symptom { font-family: 'DM Serif Display', serif; font-size: 17px; color: var(--soil); margin-bottom: 6px; }
+    .match-card.rank-1 .card-symptom { font-size: 20px; }
+    .similarity-bar-container { margin: 8px 0; }
+    .similarity-label { display: flex; justify-content: space-between; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--bark); margin-bottom: 4px; }
+    .similarity-pct { font-weight: 500; color: var(--soil); font-size: 13px; }
+    .bar-track { height: 5px; background: var(--straw); border-radius: 10px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 10px; transition: width 1s ease; width: 0; }
+    .bar-high { background: linear-gradient(90deg, var(--danger), #E74C3C); }
+    .bar-medium { background: linear-gradient(90deg, var(--warn), #F39C12); }
+    .bar-low { background: linear-gradient(90deg, var(--safe), #2ECC71); }
+    .card-action { font-size: 12px; color: var(--bark); line-height: 1.5; padding: 8px 10px; background: var(--cream); border-radius: 8px; border-left: 3px solid var(--warn); margin-top: 8px; }
+    .reset-btn { display: block; margin: 0 auto; background: transparent; border: 2px solid var(--straw); color: var(--bark); padding: 12px 28px; border-radius: 50px; font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+    .reset-btn:hover { border-color: var(--bark); color: var(--soil); }
+
+    @media (max-width: 860px) {
+      .results-layout { flex-direction: column; }
+      .results-left { width: 100%; position: static; }
+      .matches-grid { grid-template-columns: 1fr; }
+      .match-card.rank-1 { grid-column: 1; }
+    }
+
+    /* Popup */
+    .popup-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+    .popup-overlay.visible { display: flex; }
+    .popup-box { background: white; border-radius: 20px; padding: 36px 32px; max-width: 460px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: popIn 0.3s ease; }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    .popup-icon { font-size: 52px; margin-bottom: 16px; }
+    .popup-title { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--soil); margin-bottom: 10px; }
+    .popup-message { font-size: 15px; color: var(--bark); line-height: 1.6; margin-bottom: 24px; }
+    .popup-btn { background: linear-gradient(135deg, #7B3F00, var(--warn)); color: white; border: none; padding: 13px 28px; border-radius: 50px; font-family: 'DM Sans', sans-serif; font-size: 15px; cursor: pointer; margin: 0 6px; transition: all 0.2s; }
+    .popup-btn:hover { transform: translateY(-2px); }
+    .popup-btn-secondary { background: transparent; border: 2px solid var(--straw); color: var(--bark); }
+    .popup-btn-secondary:hover { border-color: var(--bark); }
+
+    .loading { display: none; text-align: center; padding: 10px; flex-shrink: 0; }
+    .loading.visible { display: block; }
+    .spinner { width: 32px; height: 32px; border: 4px solid var(--straw); border-top-color: var(--warn); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading p { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--bark); }
+    .error-box { display: none; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 10px; padding: 12px 16px; color: var(--danger); font-size: 13px; flex-shrink: 0; }
+    .error-box.visible { display: block; }
+    footer { text-align: center; padding: 28px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--bark); letter-spacing: 1px; opacity: 0.7; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .split-wrapper { flex-direction: column; height: auto; }
+      .split-left { height: 380px; }
+      .split-right { width: 100%; height: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Popup -->
+<div class="popup-overlay" id="popup-overlay">
+  <div class="popup-box">
+    <div class="popup-icon">⚠️</div>
+    <div class="popup-title">Wrong Symptom</div>
+    <div class="popup-message" id="popup-message"></div>
+    <button class="popup-btn popup-btn-secondary" onclick="closePopupAndRetry()">Try Again</button>
+    <button class="popup-btn" onclick="closePopupAndGallery()">Back to Gallery</button>
+  </div>
+</div>
+
+<header>
+  <div class="logo" onclick="goToGallery()">
+    <div class="logo-icon">🔒</div>
+    <div>
+      <div class="logo-text">Rootstalk</div>
+      <div class="logo-sub">Constrained Comparison</div>
+    </div>
+  </div>
+  <div class="header-badge">CONSTRAINED MODE</div>
+</header>
+
+<!-- SCREEN 1 — Gallery -->
+<div class="screen active" id="screen-gallery">
+  <main>
+    <div class="gallery-hero">
+      <h1>Select the symptom<br/>you want to <em>verify</em></h1>
+      <p>Choose a symptom. Your uploaded image will only be compared against that symptom's reference gallery.</p>
+    </div>
+    <div class="gallery-grid" id="gallery-grid"></div>
+  </main>
+</div>
+
+<!-- SCREEN 2 — Split: Reference left + Upload right -->
+<div class="screen" id="screen-compare">
+  <main>
+    <button class="back-btn" onclick="goToGallery()">← Gallery</button>
+    <div class="split-wrapper">
+
+      <!-- LEFT: Reference slideshow -->
+      <div class="split-left">
+        <div class="slideshow-container">
+          <div class="compare-slides" id="compare-slides"></div>
+          <button class="slide-btn slide-prev" onclick="slideCompare(-1)">‹</button>
+          <button class="slide-btn slide-next" onclick="slideCompare(1)">›</button>
+          <div class="compare-dots" id="compare-dots"></div>
+        </div>
+        <div class="split-left-body">
+          <div class="compare-symptom-name" id="compare-symptom-name"></div>
+          <div class="compare-symptom-desc" id="compare-symptom-desc"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Upload area -->
+      <div class="split-right">
+        <div class="split-right-title">Your Crop Photo</div>
+        <div class="upload-section" id="upload-zone">
+          <span class="upload-icon">📷</span>
+          <h3>Upload to compare</h3>
+          <p>JPG or PNG · Max 100MB</p>
+          <div class="upload-buttons">
+            <button class="upload-btn" onclick="document.getElementById('camera-input').click()">📷 Take Photo</button>
+            <button class="upload-btn" onclick="document.getElementById('file-input').click()">📁 Upload</button>
+          </div>
+          <input type="file" id="camera-input" accept="image/jpeg,image/png" capture="environment" style="display:none"/>
+          <input type="file" id="file-input" accept="image/jpeg,image/png" style="display:none"/>
+        </div>
+        <div class="preview-container" id="preview-container">
+          <img id="preview-img" class="preview-img" src="" alt="Preview"/>
+          <div class="preview-name" id="preview-name"></div>
+          <button class="change-btn" onclick="changeImage()">⇄ Change</button>
+        </div>
+        <div class="error-box" id="error-box-upload"></div>
+        <div class="loading" id="loading">
+          <div class="spinner"></div>
+          <p>Analysing...</p>
+        </div>
+        <button class="analyze-btn" id="analyze-btn" disabled onclick="analyzeImage()">Analyse Crop →</button>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- SCREEN 3 — Results -->
+<div class="screen" id="screen-results">
+  <main>
+    <button class="back-btn" onclick="showScreen('screen-compare')">← Try Another Photo</button>
+
+    <div class="results-layout">
+
+      <!-- LEFT: User photo + similarity + legend -->
+      <div class="results-left" id="results-left" style="display:none">
+        <div class="farmer-photo-card" id="farmer-photo-card">
+          <div class="farmer-photo-header">
+            <span>Your Photo</span>
+            <span id="farmer-photo-symptom-badge"></span>
+          </div>
+          <div class="farmer-photo-wrap">
+            <img class="farmer-photo-img" id="farmer-photo" src="" alt="Your photo"/>
+          </div>
+          <div class="farmer-photo-body">
+            <div class="farmer-photo-label">Compared against</div>
+            <div class="farmer-photo-symptom" id="farmer-photo-symptom"></div>
+            <div class="farmer-similarity-row">
+              <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--bark)">Similarity</span>
+              <div id="farmer-similarity-badge"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Legend moved into left panel -->
+        <div class="legend-block" id="thresholds-bar" style="display:none">
+          <div class="legend-title">Legend</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div><span class="legend-text">80%+ Take Action</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div><span class="legend-text">60–79% Monitor</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--safe)"></div><span class="legend-text">Below 60% Low Concern</span></div>
+        </div>
+        <button class="reset-btn" style="margin-top:16px;width:100%" onclick="goToGallery()">← Back to Gallery</button>
+      </div>
+
+      <!-- RIGHT: Matches grid -->
+      <div class="results-right">
+        <div class="results-right-header">
+          <div class="results-title">Similar Images</div>
+          <div class="results-count" id="results-count"></div>
+        </div>
+        <div class="error-box" id="error-box-results"></div>
+        <div class="matches-grid" id="matches-grid"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<footer>ROOTSTALK · CONSTRAINED COMPARISON MODE · DEMO BUILD</footer>
+
+<script>
+  const API_URL = window.location.origin;
+  let selectedFile = null;
+  let selectedSymptom = null;
+  let farmerPhotoURL = null;
+  let compareSlide = 0, compareTotalSlides = 0;
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  function goToGallery() {
+    resetUpload();
+    showScreen('screen-gallery');
+    loadGallery();
+  }
+
+  function showPopup(message) {
+    document.getElementById('popup-message').textContent = message;
+    document.getElementById('popup-overlay').classList.add('visible');
+  }
+
+  function closePopupAndRetry() {
+    document.getElementById('popup-overlay').classList.remove('visible');
+    resetUpload();
+  }
+
+  function closePopupAndGallery() {
+    document.getElementById('popup-overlay').classList.remove('visible');
+    goToGallery();
+  }
+
+  async function loadGallery() {
+    const grid = document.getElementById('gallery-grid');
+    grid.innerHTML = '<p style="color:var(--bark);font-size:14px">Loading symptoms...</p>';
+    try {
+      const res  = await fetch(`${API_URL}/gallery`);
+      const data = await res.json();
+      grid.innerHTML = '';
+      data.symptoms.forEach((symptom, i) => {
+        const card = document.createElement('div');
+        card.className = 'symptom-card';
+        card.style.animationDelay = `${i * 0.05}s`;
+        const imgUrl = `${API_URL}/gallery/${encodeURIComponent(symptom)}/first-image`;
+        const label  = symptom.replace(/_/g, ' ');
+        card.innerHTML = `
+          <img class="symptom-card-img" src="${imgUrl}" alt="${label}"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"/>
+          <div class="symptom-card-placeholder" style="display:none">🌿</div>
+          <div class="symptom-card-body">
+            <div class="symptom-card-name">${label}</div>
+            <div class="symptom-card-action">Select to verify →</div>
+          </div>`;
+        card.onclick = () => selectSymptom(symptom);
+        grid.appendChild(card);
+      });
+    } catch {
+      grid.innerHTML = `<p style="color:var(--danger)">Could not load gallery. Is the server running?</p>`;
+    }
+  }
+
+  async function selectSymptom(symptom) {
+    selectedSymptom = symptom;
+    const label = symptom.replace(/_/g, ' ');
+    document.getElementById('compare-symptom-name').textContent = label;
+    try {
+      const res  = await fetch(`${API_URL}/gallery/${encodeURIComponent(symptom)}`);
+      const data = await res.json();
+      document.getElementById('compare-symptom-desc').textContent = (data.description || '').replace(/_/g, ' ');
+    } catch {
+      document.getElementById('compare-symptom-desc').textContent = '';
+    }
+    await loadSymptomImages(symptom);
+    showScreen('screen-compare');
+  }
+
+  async function loadSymptomImages(symptom) {
+    try {
+      const res  = await fetch(`${API_URL}/gallery/${encodeURIComponent(symptom)}/images`);
+      const data = await res.json();
+      compareSlide = 0;
+      compareTotalSlides = data.images.length;
+      const compareEl = document.getElementById('compare-slides');
+      const dotsEl    = document.getElementById('compare-dots');
+      compareEl.innerHTML = '';
+      dotsEl.innerHTML    = '';
+      compareEl.style.transform = 'translateX(0%)';
+      data.images.forEach((imgPath, i) => {
+        const img = document.createElement('img');
+        img.className = 'compare-slide';
+        img.src = `${API_URL}${imgPath}`;
+        compareEl.appendChild(img);
+        const dot = document.createElement('div');
+        dot.className = `compare-dot${i === 0 ? ' active' : ''}`;
+        dot.onclick = () => goToCompareSlide(i);
+        dotsEl.appendChild(dot);
+      });
+    } catch {
+      compareTotalSlides = 0;
+    }
+  }
+
+  function slideCompare(dir) {
+    compareSlide = Math.max(0, Math.min(compareSlide + dir, compareTotalSlides - 1));
+    document.getElementById('compare-slides').style.transform = `translateX(-${compareSlide * 100}%)`;
+    updateCompareDots();
+  }
+
+  function goToCompareSlide(i) {
+    compareSlide = i;
+    document.getElementById('compare-slides').style.transform = `translateX(-${i * 100}%)`;
+    updateCompareDots();
+  }
+
+  function updateCompareDots() {
+    document.querySelectorAll('.compare-dot').forEach((d, i) => d.classList.toggle('active', i === compareSlide));
+  }
+
+  document.getElementById('file-input').addEventListener('change',   e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+  document.getElementById('camera-input').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+  const zone = document.getElementById('upload-zone');
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+
+  function handleFile(file) {
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      farmerPhotoURL = e.target.result;
+      document.getElementById('preview-img').src = e.target.result;
+      document.getElementById('preview-name').textContent = file.name;
+      document.getElementById('preview-container').classList.add('visible');
+      document.getElementById('analyze-btn').disabled = false;
+      document.getElementById('upload-zone').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function changeImage() { resetUpload(); }
+
+  function resetUpload() {
+    selectedFile = null; farmerPhotoURL = null;
+    document.getElementById('upload-zone').style.display = 'flex';
+    document.getElementById('preview-container').classList.remove('visible');
+    document.getElementById('analyze-btn').disabled = true;
+    document.getElementById('file-input').value = '';
+    document.getElementById('camera-input').value = '';
+    document.getElementById('error-box-upload').classList.remove('visible');
+    document.getElementById('loading').classList.remove('visible');
+  }
+
+  async function analyzeImage() {
+    if (!selectedFile) return;
+    document.getElementById('analyze-btn').disabled = true;
+    document.getElementById('loading').classList.add('visible');
+    document.getElementById('error-box-upload').classList.remove('visible');
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('symptom', selectedSymptom);
+    try {
+      const response = await fetch(`${API_URL}/compare`, { method: 'POST', body: formData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Something went wrong');
+      renderResults(data);
+    } catch (err) {
+      document.getElementById('error-box-upload').textContent = '⚠ ' + err.message;
+      document.getElementById('error-box-upload').classList.add('visible');
+      document.getElementById('analyze-btn').disabled = false;
+    } finally {
+      document.getElementById('loading').classList.remove('visible');
+    }
+  }
+
+  function renderResults(data) {
+    const errorBox = document.getElementById('error-box-results');
+    errorBox.classList.remove('visible');
+
+    if (data.status === "wrong_symptom") {
+      showPopup(`This image does not match "${selectedSymptom.replace(/_/g, ' ')}". Please upload an image of the correct symptom or go back and select a different symptom.`);
+      document.getElementById('analyze-btn').disabled = false;
+      return;
+    }
+
+    // Always show left panel
+    document.getElementById('results-left').style.display = 'block';
+    document.getElementById('farmer-photo').src = farmerPhotoURL;
+    document.getElementById('farmer-photo-symptom').textContent = selectedSymptom.replace(/_/g, ' ');
+
+    if (data.status === "unknown") {
+      showScreen('screen-results');
+      document.getElementById('farmer-photo-symptom-badge').innerHTML = '';
+      document.getElementById('farmer-similarity-badge').innerHTML = '';
+      document.getElementById('thresholds-bar').style.display = 'none';
+      document.getElementById('matches-grid').innerHTML = '';
+      document.getElementById('results-count').textContent = '0 matches';
+      errorBox.textContent = '⚠ No confident match found. Please consult an agricultural expert directly.';
+      errorBox.classList.add('visible');
+      return;
+    }
+
+    const simPct = data.matches[0].similarity_pct;
+    const severity = data.matches[0].severity;
+    const severityColor = severity === 'high' ? 'var(--danger)' : severity === 'medium' ? 'var(--warn)' : 'var(--safe)';
+
+    document.getElementById('farmer-photo-symptom-badge').innerHTML = `<span style="background:${severityColor};color:white;padding:4px 12px;border-radius:20px;font-size:11px;text-transform:uppercase">${severity}</span>`;
+    document.getElementById('farmer-similarity-badge').innerHTML = `<div style="font-family:'DM Serif Display',serif;font-size:26px;color:${severityColor};font-weight:600">${simPct}%</div>`;
+
+    document.getElementById('thresholds-bar').style.display = 'flex';
+    document.getElementById('results-count').textContent = `${data.matches.length} matches`;
+
+    const grid = document.getElementById('matches-grid');
+    grid.innerHTML = '';
+    const displayMatches = data.matches.slice(0, 4);
+    displayMatches.forEach((match, i) => {
+      const card = document.createElement('div');
+      card.className = `match-card rank-${i + 1}`;
+      const barClass = match.severity === 'high' ? 'bar-high' : match.severity === 'medium' ? 'bar-medium' : 'bar-low';
+      const label = match.symptom.replace(/_/g, ' ');
+      const imgUrl = `${API_URL}${match.reference_image}`;
+      card.innerHTML = `
+        <div class="card-image-container">
+          <img class="card-image" src="${imgUrl}" alt="${label}"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"/>
+          <div class="card-image-placeholder" style="display:none">🌿</div>
+          <div class="rank-badge">${i === 0 ? '★ Closest Match' : '#' + (i + 1)}</div>
+          ${i === 0 ? `<div class="severity-pill severity-${match.severity}">${match.severity}</div>` : ''}
+        </div>
+        <div class="card-body">
+          <div class="card-symptom">${label}</div>
+          <div class="similarity-bar-container">
+            <div class="similarity-label"><span>Similarity</span><span class="similarity-pct">${match.similarity_pct}%</span></div>
+            <div class="bar-track"><div class="bar-fill ${barClass}" id="bar-${i}" style="width:0%"></div></div>
+          </div>
+          <div class="card-action">${match.action}</div>
+        </div>`;
+      grid.appendChild(card);
+      setTimeout(() => { document.getElementById(`bar-${i}`).style.width = `${match.similarity_pct}%`; }, 100 + i * 150);
+    });
+    showScreen('screen-results');
+  }
+
+  loadGallery();
+</script>
+</body>
+</html>
