@@ -4,4 +4,5 @@ __pycache__/
 *.pyd
 venv/
 data/embeddings/
+data/raw/
 .vscode/
