@@ -21,18 +21,20 @@ PROTOTYPES_PATH     = os.path.join(DATA_EMBEDDINGS_DIR, "prototypes.pt")
 MODEL = load_dinov2()
 
 def load_prototypes():
-    """
-    Load prototype vectors built by compute_prototypes.py.
-    Returns a dict: { symptom_name: np.ndarray (embedding vector) }
-    """
     if not os.path.exists(PROTOTYPES_PATH):
         raise RuntimeError(
             f"prototypes.pt not found at {PROTOTYPES_PATH}. "
             "Run: python scripts/compute_prototypes.py"
         )
-    data = torch.load(PROTOTYPES_PATH, map_location="cpu")
-    # data is expected to be { symptom_name: tensor } from compute_prototypes.py
-    prototypes = {k: v.numpy() for k, v in data.items()}
+    data        = torch.load(PROTOTYPES_PATH, map_location="cpu")
+    proto_tensor = data["prototypes"]    # [10, 128]
+    class_names  = data["class_names"]   # ["Burnt_appearance", ...]
+    
+    # build { symptom_name: np.ndarray }
+    prototypes = {
+        class_names[i]: proto_tensor[i].numpy()
+        for i in range(len(class_names))
+    }
     return prototypes
 
 PROTOTYPES = load_prototypes()
