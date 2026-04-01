@@ -1,14 +1,3 @@
-"""
-dataset.py  —  SupCon-ready dataset for symptom-semantic learning
-
-Returns (image, label_index) pairs instead of triplets.
-The training loop handles batch construction; no triplet sampling needed.
-
-Augmentation strategy:
-  - Training : heavy augmentation so the model learns symptom patterns,
-               not crop identity or lighting conditions.
-  - Inference: deterministic centre-crop only (same as before).
-"""
 
 import os
 import random
