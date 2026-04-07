@@ -3,11 +3,12 @@ import sys
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torchvision import transforms
 from tqdm import tqdm
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from src.data.dataset import TripletDataset
+from src.data.preprocessing import get_transform
+from src.config import get_config
 
 
 class CropSimilarityModel(nn.Module):
@@ -71,13 +72,7 @@ def train(data_dir="data/raw",
           save_path="data/embeddings/fine_tuned_model.pt",
           checkpoint_dir="data/embeddings/checkpoints"):
 
-    transform = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225]),
-    ])
+    transform = get_transform()
 
     dataset    = TripletDataset(data_dir, transform=transform)
     dataloader = DataLoader(dataset, batch_size=batch_size,

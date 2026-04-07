@@ -1,22 +1,54 @@
-from  pydantic import BaseModel
-from typing import List, Dict 
+from pydantic import BaseModel
+from typing import List, Dict
 
-class MatchResult(BaseModel):
-    symptom: str
-    severity: str 
-    description: str 
-    action: str
-    reference_image: str
+
+class VerifyResult(BaseModel):
+    symptom_id: str
+    symptom_name: str
     similarity_pct: float
+    confidence: str
+    recommendation: str
+    gallery_size: int
+    top_n_used: int
 
-class CompareResponse(BaseModel):
+
+class VerifyResponse(BaseModel):
     status: str
-    matches: List[MatchResult]
-    plant_part_detected: str
-    thresholds : Dict[str,str]
+    result: VerifyResult
+    thresholds: Dict[str, str]
+
+
+class GallerySymptom(BaseModel):
+    symptom_id: str
+    display_name: str
+    image_count: int
+
+
+class GalleryResponse(BaseModel):
+    symptoms: List[GallerySymptom]
+    total_images: int
+
 
 class SymptomDetail(BaseModel):
-    name:str
+    symptom_id: str
+    display_name: str
     description: str
-    severity: str
-    action: str
+    image_count: int
+
+
+class ValidationSettings(BaseModel):
+    max_file_size_mb: float
+    min_brightness: float
+    max_brightness: float
+    min_laplacian_var: float
+
+
+class SimilaritySettings(BaseModel):
+    top_n_mean: int
+    threshold_high: float
+    threshold_medium: float
+
+
+class SettingsResponse(BaseModel):
+    validation: ValidationSettings
+    similarity: SimilaritySettings

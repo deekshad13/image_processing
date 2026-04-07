@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rootstalk — Model Improvement Plan</title>
+    <style>
+        :root { --bg: #f8f9fa; --card: #fff; --border: #dee2e6; --text: #212529; --muted: #6c757d; --green: #198754; --green-bg: #f0fdf4; --amber: #d97706; --amber-bg: #fffbeb; --red: #dc3545; --red-bg: #fff5f5; --blue: #0d6efd; --purple: #7c3aed; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; padding: 2rem; max-width: 1000px; margin: 0 auto; }
+        h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+        h2 { font-size: 1.25rem; margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border); }
+        h3 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem; }
+        .subtitle { color: var(--muted); margin-bottom: 2rem; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
+        .card-red { border-left: 4px solid var(--red); background: var(--red-bg); }
+        .card-green { border-left: 4px solid var(--green); background: var(--green-bg); }
+        .card-amber { border-left: 4px solid var(--amber); background: var(--amber-bg); }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+        th, td { padding: 0.6rem 0.75rem; border: 1px solid var(--border); text-align: left; }
+        th { background: #f1f3f5; font-weight: 600; }
+        code { background: #e9ecef; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; }
+        pre { background: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; margin: 0.75rem 0; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        .badge-red { background: var(--red); color: white; }
+        .badge-amber { background: var(--amber); color: white; }
+        .badge-green { background: var(--green); color: white; }
+        ul { margin: 0.5rem 0 0.5rem 1.5rem; }
+        li { margin-bottom: 0.35rem; }
+        .impact { font-size: 1.1rem; font-weight: 700; }
+        .impact-high { color: var(--red); }
+        .impact-med { color: var(--amber); }
+        hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    </style>
+</head>
+<body>
+
+<h1>Rootstalk — Model Improvement Plan</h1>
+<p class="subtitle">Why accuracy is low and what will fix it — ranked by impact</p>
+
+<hr>
+
+<h2>Current Diagnostic Results</h2>
+
+<p>We tested each symptom: upload an image of that symptom, compare against its own gallery vs. all other symptom galleries.</p>
+
+<table>
+    <thead><tr><th>Symptom</th><th>Own Gallery</th><th>Closest Other</th><th>Gap</th><th>Status</th></tr></thead>
+    <tbody>
+        <tr><td>Burnt Appearance</td><td>78.1%</td><td>60.0% (Leaf Color)</td><td>+18.1%</td><td><span class="badge badge-green">GOOD</span></td></tr>
+        <tr><td>Fruit Bored Holes</td><td>70.8%</td><td>31.1% (Stem Bored)</td><td>+39.7%</td><td><span class="badge badge-green">GOOD</span></td></tr>
+        <tr><td>Fruit Cracking</td><td>72.2%</td><td>45.5% (Fruit Bored)</td><td>+26.6%</td><td><span class="badge badge-green">GOOD</span></td></tr>
+        <tr><td>Galls</td><td>73.9%</td><td>40.5% (Leaf Chewed)</td><td>+33.4%</td><td><span class="badge badge-green">GOOD</span></td></tr>
+        <tr style="background:#fff5f5"><td>Leaf Chewed Portion</td><td>91.9%</td><td>79.3% (Leaf Color)</td><td>+12.6%</td><td><span class="badge badge-amber">WEAK</span></td></tr>
+        <tr style="background:#fff5f5"><td>Leaf Color Change</td><td>89.4%</td><td>75.3% (Leaf Chewed)</td><td>+14.2%</td><td><span class="badge badge-amber">WEAK</span></td></tr>
+        <tr style="background:#fff5f5"><td>Leaf Healthy</td><td>74.9%</td><td>68.7% (Leaf Color)</td><td>+6.3%</td><td><span class="badge badge-amber">WEAK</span></td></tr>
+        <tr style="background:#ffebee"><td><strong>Leaf Shape Change</strong></td><td>83.0%</td><td>83.0% (Leaf Color)</td><td><strong>0.0%</strong></td><td><span class="badge badge-red">FAIL</span></td></tr>
+        <tr style="background:#fff5f5"><td>Stem Bored Holes</td><td>66.3%</td><td>54.3% (Leaf Chewed)</td><td>+12.1%</td><td><span class="badge badge-amber">WEAK</span></td></tr>
+        <tr style="background:#ffebee"><td><strong>Stem Cracking</strong></td><td>48.1%</td><td>62.7% (Leaf Chewed)</td><td><strong>-14.6%</strong></td><td><span class="badge badge-red">FAIL</span></td></tr>
+    </tbody>
+</table>
+
+<div class="card card-red">
+    <strong>Root Cause:</strong> Baseline DINOv2 sees "photos of leaves" — not "disease symptoms." It compares general visual features (leaf shape, green color, background blur). All leaf symptoms look similar to it because they're all... leaves. The model has zero agricultural knowledge.
+</div>
+
+<hr>
+
+<h2>Fix 1: Deploy the Fine-Tuned Model <span class="impact impact-high">— Highest Impact</span></h2>
+
+<div class="card card-green">
+    <p>The intern already trained a fine-tuned model that showed <strong>+27% precision improvement</strong> in evaluation. But the weights file (<code>fine_tuned_model.pt</code>) was trained on Google Colab and never deployed. The API is running on raw baseline DINOv2 — all that training work is sitting unused.</p>
+</div>
+
+<h3>What fine-tuning does</h3>
+<p>The <code>CropSimilarityModel</code> adds a projection head (384→256→128 dims) on top of DINOv2 and trains with <strong>triplet loss</strong>:</p>
+<ul>
+    <li><strong>Anchor:</strong> A Galls image</li>
+    <li><strong>Positive:</strong> A different Galls image (should be close in embedding space)</li>
+    <li><strong>Negative:</strong> A Leaf Color Change image (should be far apart)</li>
+    <li>The loss function literally teaches: "Galls images should cluster together, away from non-Galls images"</li>
+</ul>
+
+<h3>Action</h3>
+<ol>
+    <li>Retrieve <code>fine_tuned_model.pt</code> from the Google Colab session where it was trained (check Colab file browser or Google Drive)</li>
+    <li>Place it at <code>data/embeddings/fine_tuned_model.pt</code></li>
+    <li>Run <code>python scripts/build_gallery.py</code> to rebuild embeddings with the fine-tuned model</li>
+    <li>Restart the server — it auto-detects and loads the fine-tuned model</li>
+</ol>
+
+<p><strong>If the weights are lost</strong>, re-train locally or on Colab:</p>
+<pre>python scripts/train.py   # ~20 min on GPU, ~2 hours on CPU</pre>
+
+<p><strong>Expected improvement:</strong> The intern's evaluation showed Precision@5 going from 0.71 → 0.90. The weak leaf symptoms and Stem Cracking should see the biggest gains since fine-tuning specifically teaches the model to separate them.</p>
+
+<hr>
+
+<h2>Fix 2: Better Training Loss — ArcFace Instead of Triplet <span class="impact impact-high">— High Impact</span></h2>
+
+<div class="card card-amber">
+    <p>Triplet loss (current) is okay but outdated. It only learns from 3 images at a time (anchor, positive, negative), and with random sampling, most triplets are "easy" — the model already knows Galls ≠ Fruit, so those triplets contribute zero learning.</p>
+</div>
+
+<h3>Why ArcFace is better for verification</h3>
+<table>
+    <thead><tr><th>Aspect</th><th>Triplet Loss (Current)</th><th>ArcFace Loss (Recommended)</th></tr></thead>
+    <tbody>
+        <tr><td>Learning signal</td><td>3 images per step</td><td>Entire batch (16+ images) per step</td></tr>
+        <tr><td>Hard cases</td><td>Random sampling — often picks easy negatives</td><td>Automatically focuses on hardest distinctions</td></tr>
+        <tr><td>Task fit</td><td>General metric learning</td><td>Specifically designed for verification ("is this the same?")</td></tr>
+        <tr><td>Used in</td><td>General similarity</td><td>Face verification (exactly analogous to our symptom verification)</td></tr>
+        <tr><td>Convergence</td><td>Slow, requires careful margin tuning</td><td>Faster, more stable</td></tr>
+    </tbody>
+</table>
+
+<h3>Implementation</h3>
+<pre>pip install pytorch-metric-learning</pre>
+<p>Replace <code>nn.TripletMarginLoss</code> in <code>fine_tune.py</code> with:</p>
+<pre>from pytorch_metric_learning import losses, miners
+
+loss_fn = losses.ArcFaceLoss(
+    num_classes=10,      # 10 symptom classes
+    embedding_size=128,  # projection dim
+)
+miner = miners.MultiSimilarityMiner()  # hard-negative mining
+
+# Training loop:
+embeddings = model(batch_images)
+hard_pairs = miner(embeddings, labels)
+loss = loss_fn(embeddings, labels, hard_pairs)</pre>
+
+<p><strong>Expected improvement:</strong> 15-30% better separation between similar symptoms (leaf classes). This is the single biggest algorithmic change available.</p>
+
+<hr>
+
+<h2>Fix 3: More Data — Especially for Weak Classes <span class="impact impact-high">— High Impact</span></h2>
+
+<table>
+    <thead><tr><th>Symptom</th><th>Current Images</th><th>Status</th><th>Minimum Needed</th></tr></thead>
+    <tbody>
+        <tr style="background:#ffebee"><td>Stem Cracking</td><td>12</td><td><span class="badge badge-red">FAIL</span></td><td>100+</td></tr>
+        <tr style="background:#ffebee"><td>Galls</td><td>13</td><td>GOOD (but fragile)</td><td>80+</td></tr>
+        <tr><td>Fruit Cracking</td><td>27</td><td>GOOD</td><td>80+</td></tr>
+        <tr><td>Burnt Appearance</td><td>46</td><td>GOOD</td><td>80+</td></tr>
+        <tr><td>Stem Bored Holes</td><td>58</td><td><span class="badge badge-amber">WEAK</span></td><td>100+</td></tr>
+        <tr><td>Fruit Bored Holes</td><td>93</td><td>GOOD</td><td>OK</td></tr>
+        <tr><td>Leaf Healthy</td><td>200</td><td><span class="badge badge-amber">WEAK</span></td><td>OK (needs diversity)</td></tr>
+        <tr><td>Leaf Shape Change</td><td>310</td><td><span class="badge badge-red">FAIL</span></td><td>OK (needs better images)</td></tr>
+        <tr><td>Leaf Chewed Portion</td><td>414</td><td><span class="badge badge-amber">WEAK</span></td><td>OK</td></tr>
+        <tr><td>Leaf Color Change</td><td>468</td><td><span class="badge badge-amber">WEAK</span></td><td>OK</td></tr>
+    </tbody>
+</table>
+
+<h3>Data sources</h3>
+<ul>
+    <li><strong>PlantVillage dataset</strong> — 54,000+ labeled plant disease images (freely available). Map their categories to our symptom classes.</li>
+    <li><strong>Field collection</strong> — Real farmer photos from the EywaFarm platform. Most valuable because they match actual usage conditions.</li>
+    <li><strong>Web scraping</strong> — Agricultural extension sites, university disease databases.</li>
+</ul>
+
+<h3>Quick win: Data augmentation</h3>
+<p>Without collecting a single new image, we can multiply effective dataset size 5-10x by generating variations during training:</p>
+<pre>augment_transform = transforms.Compose([
+    transforms.RandomResizedCrop(224, scale=(0.6, 1.0)),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomVerticalFlip(),
+    transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2),
+    transforms.RandomRotation(30),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])</pre>
+<p>This teaches the model that a Galls image is still Galls when rotated, zoomed, or under different lighting.</p>
+
+<hr>
+
+<h2>Fix 4: Smarter Comparison — Center-Weighted Similarity <span class="impact impact-med">— Medium Impact</span></h2>
+
+<div class="card card-amber">
+    <p>Currently, the entire image (including background, fingers, soil) contributes equally to the embedding. For a macro crop photo, 40-60% of the image might be irrelevant background. The disease symptom is in the center.</p>
+</div>
+
+<h3>Approach: Multi-crop embedding</h3>
+<p>Instead of one embedding per image, extract 3:</p>
+<ol>
+    <li><strong>Full image</strong> — overall context</li>
+    <li><strong>Center crop (60%)</strong> — focuses on the subject</li>
+    <li><strong>Tight center crop (40%)</strong> — focuses on the symptom detail</li>
+</ol>
+<p>Weighted average: 20% full + 40% center + 40% tight. This makes the comparison focus on the disease, not the background.</p>
+
+<hr>
+
+<h2>Fix 5: Bigger Model — DINOv2 ViT-B/14 <span class="impact impact-med">— Medium Impact</span></h2>
+
+<table>
+    <thead><tr><th>Model</th><th>Params</th><th>Embedding Dim</th><th>Inference Time</th><th>Accuracy</th></tr></thead>
+    <tbody>
+        <tr><td>DINOv2 ViT-S/14 (current)</td><td>21M</td><td>384</td><td>~50ms</td><td>Baseline</td></tr>
+        <tr style="background:var(--green-bg)"><td><strong>DINOv2 ViT-B/14 (recommended)</strong></td><td>86M</td><td>768</td><td>~120ms</td><td>+5-10% on fine-grained tasks</td></tr>
+        <tr><td>DINOv2 ViT-L/14</td><td>300M</td><td>1024</td><td>~350ms</td><td>Best accuracy, too slow for mobile</td></tr>
+    </tbody>
+</table>
+
+<p>ViT-B/14 has 4x more parameters and produces richer embeddings. For subtle differences between leaf symptoms, this extra capacity matters. Inference is still fast enough (&lt;150ms per image).</p>
+
+<h3>Change needed</h3>
+<p>In <code>config/config.yaml</code>:</p>
+<pre>model:
+  variant: "dinov2_vitb14"    # was dinov2_vits14
+  backbone_dim: 768           # was 384</pre>
+<p>Then retrain and rebuild gallery.</p>
+
+<hr>
+
+<h2>Recommended Execution Order</h2>
+
+<table>
+    <thead><tr><th>Priority</th><th>Action</th><th>Effort</th><th>Expected Gain</th></tr></thead>
+    <tbody>
+        <tr><td><span class="badge badge-red">1</span></td><td><strong>Deploy fine-tuned model</strong> (retrieve from Colab or retrain)</td><td>1 day</td><td>+20-30% accuracy</td></tr>
+        <tr><td><span class="badge badge-red">2</span></td><td><strong>Add data augmentation</strong> to training pipeline</td><td>2 hours</td><td>+10-15% on small classes</td></tr>
+        <tr><td><span class="badge badge-red">3</span></td><td><strong>Switch to ArcFace loss</strong> with hard-negative mining</td><td>1 day</td><td>+15-25% separation of similar symptoms</td></tr>
+        <tr><td><span class="badge badge-amber">4</span></td><td><strong>Collect more data</strong> for Stem Cracking, Galls, Fruit Cracking</td><td>1-2 weeks</td><td>Fixes the FAIL cases entirely</td></tr>
+        <tr><td><span class="badge badge-amber">5</span></td><td><strong>Upgrade to ViT-B/14</strong></td><td>Half day + retrain</td><td>+5-10% on fine-grained distinctions</td></tr>
+        <tr><td><span class="badge badge-green">6</span></td><td><strong>Multi-crop embedding</strong></td><td>Half day</td><td>+5-10% by reducing background noise</td></tr>
+    </tbody>
+</table>
+
+<div class="card card-green" style="margin-top:1.5rem; text-align:center; padding:1.5rem;">
+    <p style="font-size:1.05rem; font-weight:600; color:var(--green);">Items 1+2+3 together can be done in 2-3 days and should bring accuracy from ~60% to ~85%+</p>
+    <p style="font-size:0.85rem; color:var(--muted); margin-top:0.5rem;">The biggest single win is deploying the fine-tuned model that already exists — it's already trained but never connected to the API.</p>
+</div>
+
+</body>
+</html>

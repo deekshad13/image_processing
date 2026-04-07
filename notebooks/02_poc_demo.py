@@ -1,65 +1,71 @@
+"""
+PoC demo — compare a single image against a specific symptom.
+
+Usage: python notebooks/02_poc_demo.py <symptom_id> <image_path>
+Example: python notebooks/02_poc_demo.py galls data/raw/Galls/img_001.jpg
+"""
 import os
 import sys
-import json
 import numpy as np
+from PIL import Image
+import torch
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from model.encoder import load_dinov2, get_embedding
-from model.similarity import find_top_matches
-
-EMBEDDINGS_DIR = "data/embeddings"
-
-def load_full_gallery():
-    all_embeddings = []
-    all_labels = []
-
-    for symptom_folder in os.listdir(EMBEDDINGS_DIR):
-        folder_path = os.path.join(EMBEDDINGS_DIR, symptom_folder)
-        emb_path    = os.path.join(folder_path, "embeddings.npy")
-        lab_path    = os.path.join(folder_path, "labels.json")
-
-        if not os.path.exists(emb_path):
-            continue
-
-        embeddings = np.load(emb_path)
-        with open(lab_path, "r") as f:
-            labels = json.load(f)
-
-        all_embeddings.append(embeddings)
-        all_labels.extend(labels)
-
-    return np.vstack(all_embeddings), all_labels
+from src.config import get_config
+from src.data.preprocessing import get_transform
+from src.data.symptom_registry import resolve_symptom_id, get_symptom_ids
+from src.data.gallery_builder import load_gallery, search_symptom
+from src.model.encoder import load_model
 
 
-def compare_image(image_path: str, top_k: int = 5):
+def compare_image(symptom_id, image_path):
+    info = resolve_symptom_id(symptom_id)
+    if info is None:
+        print(f"Unknown symptom_id: '{symptom_id}'")
+        print(f"Valid IDs: {', '.join(get_symptom_ids())}")
+        return
+
     print(f"\nQuery image: {image_path}")
+    print(f"Verifying against: {info['display_name']}")
     print("=" * 55)
 
-    print("Loading DINOv2...")
-    model = load_dinov2()
+    cfg = get_config()
+    model, model_type = load_model()
+    print(f"Model: {model_type}")
 
-    print("Loading gallery...")
-    ref_embeddings, ref_labels = load_full_gallery()
+    gallery = load_gallery()
+    if symptom_id not in gallery:
+        print(f"No gallery embeddings found for {symptom_id}")
+        return
 
-    print("Extracting embedding...")
-    query_embedding = get_embedding(image_path, model)
+    transform = get_transform()
+    img = Image.open(image_path).convert("RGB")
+    tensor = transform(img).unsqueeze(0)
+    with torch.no_grad():
+        query_emb = model(tensor).squeeze().numpy()
 
-    results = find_top_matches(query_embedding, ref_embeddings,
-                                ref_labels, top_k=top_k)
+    top_n = min(cfg["similarity"]["top_n_mean"], gallery[symptom_id]["count"])
+    sims, _ = search_symptom(gallery, symptom_id, query_emb, top_k=top_n)
+    mean_sim = float(np.mean(sims[:top_n])) * 100
 
-    print(f"\nTop {top_k} matches:\n")
-    for r in results:
-        bar = "█" * int(r["similarity"] / 10) + "░" * (10 - int(r["similarity"] / 10))
-        print(f"  {r['rank']}. {r['symptom']:<25} "
-              f"{r['similarity']:>5.1f}%  [{bar}]  {r['action']}")
-    print()
+    thresholds = cfg["similarity"]["thresholds"]
+    if mean_sim >= thresholds["high"]:
+        label = "Take Action"
+    elif mean_sim >= thresholds["medium"]:
+        label = "Monitor"
+    else:
+        label = "Low Concern"
+
+    bar = "█" * int(mean_sim / 10) + "░" * (10 - int(mean_sim / 10))
+    print(f"\nResult: {mean_sim:.1f}%  [{bar}]  {label}")
+    print(f"Gallery size: {gallery[symptom_id]['count']} reference images")
+    print(f"Averaged top {top_n} matches\n")
 
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 2:
-        print("Usage: python notebooks/02_poc_demo.py <image_path>")
-        print("Example: python notebooks/02_poc_demo.py data/raw/Leaf_Healthy/img_001.jpg")
+    if len(sys.argv) < 3:
+        print("Usage: python notebooks/02_poc_demo.py <symptom_id> <image_path>")
+        print(f"Valid symptom IDs: {', '.join(get_symptom_ids())}")
     else:
-        compare_image(sys.argv[1])
+        compare_image(sys.argv[1], sys.argv[2])

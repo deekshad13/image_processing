@@ -1,9 +1,9 @@
 import numpy as np
 from typing import List, Dict
+from src.config import get_config
 
 
-def cosine_similarity(embedding_a: np.ndarray,
-                      embedding_b: np.ndarray) -> float:
+def cosine_similarity(embedding_a, embedding_b):
     dot_product = np.dot(embedding_a, embedding_b)
     norm_a = np.linalg.norm(embedding_a)
     norm_b = np.linalg.norm(embedding_b)
@@ -15,10 +15,18 @@ def cosine_similarity(embedding_a: np.ndarray,
     return round(float(similarity) * 100, 1)
 
 
-def find_top_matches(query_embedding: np.ndarray,
-                     reference_embeddings: np.ndarray,
-                     reference_labels: List[str],
-                     top_k: int = 5) -> List[Dict]:
+def get_recommendation(similarity_pct):
+    cfg = get_config()
+    thresholds = cfg["similarity"]["thresholds"]
+    if similarity_pct >= thresholds["high"]:
+        return "high", "Take Action"
+    elif similarity_pct >= thresholds["medium"]:
+        return "medium", "Monitor"
+    else:
+        return "low", "Low Concern"
+
+
+def find_top_matches(query_embedding, reference_embeddings, reference_labels, top_k=5):
     scores = []
 
     for i, ref_embedding in enumerate(reference_embeddings):
@@ -29,20 +37,12 @@ def find_top_matches(query_embedding: np.ndarray,
 
     results = []
     for rank, (label, similarity) in enumerate(scores[:top_k], start=1):
+        confidence, action = get_recommendation(similarity)
         results.append({
-            "rank":       rank,
-            "symptom":    label,
+            "rank": rank,
+            "symptom": label,
             "similarity": similarity,
-            "action":     _get_action_label(similarity)
+            "action": action,
         })
 
     return results
-
-
-def _get_action_label(similarity: float) -> str:
-    if similarity >= 80:
-        return "Take Action"
-    elif similarity >= 60:
-        return "Monitor"
-    else:
-        return "Low Concern"

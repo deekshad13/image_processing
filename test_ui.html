@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rootstalk — Crop Disease Verification</title>
+    <style>
+        :root {
+            --bg: #f0f4f0;
+            --card: #ffffff;
+            --border: #d4ddd4;
+            --text: #1a2e1a;
+            --muted: #5a6f5a;
+            --green: #2d7a3a;
+            --green-light: #e8f5e9;
+            --green-dark: #1b5e20;
+            --amber: #e67e00;
+            --amber-light: #fff3e0;
+            --red: #c62828;
+            --red-light: #ffebee;
+            --blue: #1565c0;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--green-dark), var(--green));
+            color: white;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .header svg { width: 32px; height: 32px; flex-shrink: 0; }
+        .header h1 { font-size: 1.25rem; font-weight: 600; }
+        .header .subtitle { font-size: 0.8rem; opacity: 0.85; }
+
+        /* Status bar */
+        .status-bar {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 0.5rem 1.5rem;
+            font-size: 0.8rem;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
+        .status-dot.online { background: #4caf50; }
+        .status-dot.offline { background: #f44336; }
+
+        /* Container */
+        .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+
+        /* Steps */
+        .steps { display: flex; gap: 0; margin-bottom: 1.5rem; }
+        .step {
+            flex: 1; text-align: center; padding: 0.75rem 0.5rem;
+            font-size: 0.8rem; font-weight: 500; color: var(--muted);
+            background: var(--card); border: 1px solid var(--border);
+        }
+        .step:first-child { border-radius: 8px 0 0 8px; }
+        .step:last-child { border-radius: 0 8px 8px 0; }
+        .step.active { background: var(--green); color: white; border-color: var(--green); }
+        .step.done { background: var(--green-light); color: var(--green); border-color: var(--green); }
+        .step-num {
+            display: inline-block; width: 20px; height: 20px; border-radius: 50%;
+            background: var(--border); color: white; font-size: 0.7rem; line-height: 20px; margin-right: 0.35rem;
+        }
+        .step.active .step-num { background: rgba(255,255,255,0.3); }
+        .step.done .step-num { background: var(--green); }
+
+        /* Cards */
+        .card {
+            background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+            padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
+
+        /* Symptom grid */
+        .symptom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; }
+        .symptom-card {
+            border: 2px solid var(--border); border-radius: 10px; padding: 1rem;
+            text-align: center; cursor: pointer; transition: all 0.2s; background: var(--card);
+        }
+        .symptom-card:hover { border-color: var(--green); background: var(--green-light); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(45,122,58,0.15); }
+        .symptom-card.selected { border-color: var(--green); background: var(--green-light); box-shadow: 0 0 0 3px rgba(45,122,58,0.2); }
+        .symptom-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+        .symptom-name { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem; }
+        .symptom-count { font-size: 0.7rem; color: var(--muted); }
+
+        /* Two-column layout for upload step */
+        .upload-section { display: none; }
+        .upload-section.visible { display: block; }
+        .upload-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+
+        /* Upload area */
+        .upload-area {
+            border: 2px dashed var(--border); border-radius: 12px; padding: 2rem 1.5rem;
+            text-align: center; cursor: pointer; transition: all 0.2s; background: #fafcfa;
+        }
+        .upload-area:hover, .upload-area.dragover { border-color: var(--green); background: var(--green-light); }
+        .upload-area svg { width: 48px; height: 48px; color: var(--muted); margin-bottom: 0.75rem; }
+        .upload-area p { color: var(--muted); font-size: 0.9rem; margin-bottom: 0.25rem; }
+        .upload-area .hint { font-size: 0.75rem; color: #999; }
+
+        /* Preview */
+        .preview-container { display: none; align-items: flex-start; gap: 1rem; margin-top: 1rem; }
+        .preview-container.visible { display: flex; }
+        .preview-img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+        .preview-info { flex: 1; }
+        .preview-info .filename { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; }
+        .preview-info .filesize { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.75rem; }
+
+        /* Reference images panel */
+        .ref-panel {
+            background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+            padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            max-height: 520px; overflow-y: auto;
+        }
+        .ref-panel h3 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem; }
+        .ref-panel .ref-subtitle { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.75rem; }
+        .ref-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+        .ref-thumb {
+            width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px;
+            border: 2px solid transparent; cursor: pointer; transition: all 0.2s;
+        }
+        .ref-thumb:hover { border-color: var(--green); transform: scale(1.05); }
+        .ref-loading { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.85rem; }
+        .ref-count-badge {
+            display: inline-block; background: var(--green-light); color: var(--green);
+            padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600; margin-left: 0.5rem;
+        }
+
+        /* Lightbox */
+        .lightbox {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            z-index: 300; justify-content: center; align-items: center; cursor: pointer;
+        }
+        .lightbox.visible { display: flex; }
+        .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; object-fit: contain; }
+        .lightbox-close {
+            position: absolute; top: 1rem; right: 1.5rem; color: white; font-size: 2rem;
+            cursor: pointer; background: none; border: none; line-height: 1;
+        }
+        .lightbox-label {
+            position: absolute; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); color: white; padding: 0.5rem 1rem; border-radius: 6px;
+            font-size: 0.8rem;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.7rem 1.5rem; border: none; border-radius: 8px;
+            font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-primary { background: var(--green); color: white; }
+        .btn-primary:hover { background: var(--green-dark); }
+        .btn-primary:disabled { background: #aaa; cursor: not-allowed; }
+        .btn-outline { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+        .btn-outline:hover { background: #f5f5f5; }
+        .btn-row { display: flex; gap: 0.75rem; margin-top: 1rem; }
+
+        /* Result section */
+        .result-section { display: none; }
+        .result-section.visible { display: block; }
+        .result-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+
+        .result-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
+        .result-icon {
+            width: 56px; height: 56px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; flex-shrink: 0;
+        }
+        .result-icon.high { background: var(--red-light); }
+        .result-icon.medium { background: var(--amber-light); }
+        .result-icon.low { background: var(--green-light); }
+        .result-title { font-size: 1.1rem; font-weight: 700; }
+        .result-subtitle { font-size: 0.85rem; color: var(--muted); margin-top: 0.15rem; }
+
+        /* Gauge */
+        .gauge-container { display: flex; align-items: center; justify-content: center; margin: 1.5rem 0; }
+        .gauge { position: relative; width: 180px; height: 180px; }
+        .gauge svg { transform: rotate(-90deg); }
+        .gauge-bg { fill: none; stroke: #e8e8e8; stroke-width: 12; }
+        .gauge-fill { fill: none; stroke-width: 12; stroke-linecap: round; transition: stroke-dashoffset 1.5s ease; }
+        .gauge-fill.high { stroke: var(--red); }
+        .gauge-fill.medium { stroke: var(--amber); }
+        .gauge-fill.low { stroke: var(--green); }
+        .gauge-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+        .gauge-pct { font-size: 2.2rem; font-weight: 700; line-height: 1; }
+        .gauge-pct.high { color: var(--red); }
+        .gauge-pct.medium { color: var(--amber); }
+        .gauge-pct.low { color: var(--green); }
+        .gauge-label { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
+
+        /* Recommendation */
+        .recommendation {
+            border-radius: 10px; padding: 1rem 1.25rem; margin: 1rem 0;
+            display: flex; align-items: flex-start; gap: 0.75rem;
+        }
+        .recommendation.high { background: var(--red-light); border-left: 4px solid var(--red); }
+        .recommendation.medium { background: var(--amber-light); border-left: 4px solid var(--amber); }
+        .recommendation.low { background: var(--green-light); border-left: 4px solid var(--green); }
+        .rec-icon { font-size: 1.25rem; flex-shrink: 0; margin-top: 0.1rem; }
+        .rec-text { font-size: 0.9rem; font-weight: 500; }
+        .rec-detail { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+
+        /* Details grid */
+        .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem; }
+        .detail-item { background: #f8faf8; border-radius: 8px; padding: 0.75rem; }
+        .detail-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .detail-value { font-size: 0.95rem; font-weight: 600; margin-top: 0.2rem; }
+
+        /* Thresholds */
+        .thresholds { display: flex; gap: 0; margin-top: 1.25rem; border-radius: 8px; overflow: hidden; font-size: 0.75rem; }
+        .threshold-item { flex: 1; padding: 0.5rem; text-align: center; font-weight: 500; }
+        .threshold-item.high-zone { background: var(--red-light); color: var(--red); }
+        .threshold-item.medium-zone { background: var(--amber-light); color: var(--amber); }
+        .threshold-item.low-zone { background: var(--green-light); color: var(--green); }
+
+        /* Spinner */
+        .spinner-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.85);
+            z-index: 100; justify-content: center; align-items: center; flex-direction: column; gap: 1rem;
+        }
+        .spinner-overlay.visible { display: flex; }
+        .spinner { width: 48px; height: 48px; border: 4px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner-text { font-size: 0.9rem; color: var(--muted); }
+
+        /* Error toast */
+        .error-toast {
+            display: none; position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+            background: var(--red); color: white; padding: 0.75rem 1.5rem; border-radius: 8px;
+            font-size: 0.85rem; box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 200; max-width: 90%;
+        }
+        .error-toast.visible { display: block; }
+
+        /* Engine comparison cards */
+        .engine-card {
+            background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+            padding: 1rem 1.25rem; margin-bottom: 0.75rem; display: grid;
+            grid-template-columns: 1fr auto; gap: 0.75rem; align-items: center;
+            transition: all 0.3s;
+        }
+        .engine-card.rank-1 { border-left: 4px solid #ffd700; background: #fffdf0; }
+        .engine-card.rank-2 { border-left: 4px solid #c0c0c0; }
+        .engine-card.rank-3 { border-left: 4px solid #cd7f32; }
+        .engine-name { font-weight: 700; font-size: 0.95rem; }
+        .engine-meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.15rem; }
+        .engine-badge {
+            display: inline-block; padding: 1px 6px; border-radius: 3px;
+            font-size: 0.65rem; font-weight: 600; margin-right: 0.35rem;
+        }
+        .engine-badge.dino { background: #e8f0fe; color: #1a73e8; }
+        .engine-badge.clip { background: #fce8e6; color: #d93025; }
+        .engine-badge.cnn { background: #e6f4ea; color: #137333; }
+        .engine-score { text-align: right; }
+        .engine-pct { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+        .engine-pct.high { color: var(--red); }
+        .engine-pct.medium { color: var(--amber); }
+        .engine-pct.low { color: var(--green); }
+        .engine-conf { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+        .engine-timing { font-size: 0.7rem; color: #aaa; margin-top: 0.1rem; }
+        .engine-desc { font-size: 0.8rem; color: var(--muted); margin-top: 0.35rem; line-height: 1.4; }
+        .engine-proscons { font-size: 0.75rem; margin-top: 0.35rem; }
+        .engine-proscons span { margin-right: 0.75rem; }
+        .engine-proscons .pro { color: var(--green); }
+        .engine-proscons .con { color: var(--red); }
+
+        /* Settings panel */
+        .settings-toggle {
+            margin-left: auto; cursor: pointer; background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 0.4rem 0.75rem;
+            color: white; font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; gap: 0.4rem;
+            transition: background 0.2s;
+        }
+        .settings-toggle:hover { background: rgba(255,255,255,0.25); }
+        .settings-toggle svg { width: 16px; height: 16px; }
+
+        .settings-drawer {
+            display: none; background: var(--card); border-bottom: 1px solid var(--border);
+            padding: 1.25rem 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .settings-drawer.visible { display: block; }
+        .settings-drawer h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem; }
+        .settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+        .setting-group { margin-bottom: 0.5rem; }
+        .setting-group label {
+            display: block; font-size: 0.75rem; color: var(--muted); font-weight: 500;
+            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem;
+        }
+        .setting-row { display: flex; align-items: center; gap: 0.5rem; }
+        .setting-row input[type="range"] { flex: 1; accent-color: var(--green); }
+        .setting-val {
+            min-width: 45px; text-align: right; font-size: 0.85rem; font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+        .settings-actions { display: flex; gap: 0.75rem; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+        .settings-saved {
+            font-size: 0.8rem; color: var(--green); font-weight: 500;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .settings-saved.show { opacity: 1; }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+            .symptom-grid { grid-template-columns: repeat(2, 1fr); }
+            .upload-layout, .result-layout { grid-template-columns: 1fr; }
+            .details-grid { grid-template-columns: 1fr; }
+            .steps { font-size: 0.7rem; }
+            .container { padding: 1rem; }
+            .ref-grid { grid-template-columns: repeat(3, 1fr); }
+            .settings-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+        <path d="M12 6v4l3 3"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+    </svg>
+    <div><h1>Rootstalk</h1><div class="subtitle">Crop Disease Verification System</div></div>
+    <button class="settings-toggle" onclick="toggleSettings()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Settings
+    </button>
+</div>
+
+<!-- Settings Drawer -->
+<div class="settings-drawer" id="settingsDrawer">
+    <h3>Configuration</h3>
+    <div class="settings-grid">
+        <div>
+            <div class="setting-group">
+                <label>Blur Threshold (Laplacian Variance)</label>
+                <div class="setting-row">
+                    <input type="range" id="sBlur" min="1" max="100" step="1" oninput="updateSettingDisplay(this, 'sBlurVal')">
+                    <span class="setting-val" id="sBlurVal">15</span>
+                </div>
+            </div>
+            <div class="setting-group">
+                <label>Min Brightness</label>
+                <div class="setting-row">
+                    <input type="range" id="sBrightMin" min="0" max="100" step="1" oninput="updateSettingDisplay(this, 'sBrightMinVal')">
+                    <span class="setting-val" id="sBrightMinVal">30</span>
+                </div>
+            </div>
+            <div class="setting-group">
+                <label>Max Brightness</label>
+                <div class="setting-row">
+                    <input type="range" id="sBrightMax" min="150" max="255" step="1" oninput="updateSettingDisplay(this, 'sBrightMaxVal')">
+                    <span class="setting-val" id="sBrightMaxVal">240</span>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="setting-group">
+                <label>Max File Size (MB)</label>
+                <div class="setting-row">
+                    <input type="range" id="sFileSize" min="1" max="200" step="1" oninput="updateSettingDisplay(this, 'sFileSizeVal')">
+                    <span class="setting-val" id="sFileSizeVal">100</span>
+                </div>
+            </div>
+            <div class="setting-group">
+                <label>Top-N Mean (references averaged)</label>
+                <div class="setting-row">
+                    <input type="range" id="sTopN" min="1" max="20" step="1" oninput="updateSettingDisplay(this, 'sTopNVal')">
+                    <span class="setting-val" id="sTopNVal">5</span>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="setting-group">
+                <label>Take Action Threshold (%)</label>
+                <div class="setting-row">
+                    <input type="range" id="sThreshHigh" min="50" max="100" step="1" oninput="updateSettingDisplay(this, 'sThreshHighVal')">
+                    <span class="setting-val" id="sThreshHighVal">80</span>
+                </div>
+            </div>
+            <div class="setting-group">
+                <label>Monitor Threshold (%)</label>
+                <div class="setting-row">
+                    <input type="range" id="sThreshMed" min="20" max="80" step="1" oninput="updateSettingDisplay(this, 'sThreshMedVal')">
+                    <span class="setting-val" id="sThreshMedVal">60</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="settings-actions">
+        <button class="btn btn-primary" onclick="saveSettings()" style="padding:0.5rem 1.25rem; font-size:0.85rem;">Save Settings</button>
+        <button class="btn btn-outline" onclick="resetSettings()" style="padding:0.5rem 1.25rem; font-size:0.85rem;">Reset Defaults</button>
+        <span class="settings-saved" id="settingsSaved">Settings saved</span>
+    </div>
+</div>
+
+<div class="status-bar">
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusText">Checking server...</span>
+</div>
+
+<div class="container">
+    <div class="steps">
+        <div class="step active" id="step1"><span class="step-num">1</span>Select Symptom</div>
+        <div class="step" id="step2"><span class="step-num">2</span>Upload Photo</div>
+        <div class="step" id="step3"><span class="step-num">3</span>View Result</div>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="card" id="symptomSection">
+        <h2>Which symptom are you checking?</h2>
+        <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem;">Select the symptom you want to verify your crop image against.</p>
+        <div class="symptom-grid" id="symptomGrid"></div>
+    </div>
+
+    <!-- Step 2: Upload + Reference panel side by side -->
+    <div class="upload-section" id="uploadSection">
+        <div class="upload-layout">
+            <!-- Left: Upload -->
+            <div class="card">
+                <h2>Upload your crop photo</h2>
+                <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem;">
+                    Verifying against: <strong id="selectedSymptomName">-</strong>
+                    <a href="#" id="changeSymptom" style="color:var(--blue); margin-left:0.5rem; font-size:0.8rem;">Change</a>
+                </p>
+                <div class="upload-area" id="uploadArea">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <p>Click to upload or drag &amp; drop</p>
+                    <p class="hint">JPG or PNG, max 100MB</p>
+                </div>
+                <input type="file" id="fileInput" accept="image/jpeg,image/png" style="display:none;">
+                <div class="preview-container" id="previewContainer">
+                    <img id="previewImg" class="preview-img" src="" alt="Preview">
+                    <div class="preview-info">
+                        <div class="filename" id="fileName">-</div>
+                        <div class="filesize" id="fileSize">-</div>
+                        <div class="btn-row">
+                            <button class="btn btn-primary" onclick="verifyImage()">Verify Image</button>
+                            <button class="btn btn-outline" onclick="compareEngines()" style="background:var(--blue); color:white; border-color:var(--blue);">Compare All Engines</button>
+                            <button class="btn btn-outline" onclick="clearUpload()">Remove</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Reference images -->
+            <div class="ref-panel" id="refPanel">
+                <h3 id="refTitle">Reference Images</h3>
+                <div class="ref-subtitle" id="refSubtitle">Select a symptom to see references</div>
+                <div id="refContent">
+                    <div class="ref-loading">Loading reference images...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: Result + Reference panel side by side -->
+    <div class="result-section" id="resultSection">
+        <div class="result-layout">
+            <!-- Left: Result -->
+            <div class="card">
+                <div class="result-header">
+                    <div class="result-icon" id="resultIcon"></div>
+                    <div>
+                        <div class="result-title" id="resultTitle">-</div>
+                        <div class="result-subtitle" id="resultSubtitle">-</div>
+                    </div>
+                </div>
+                <div class="gauge-container">
+                    <div class="gauge">
+                        <svg width="180" height="180" viewBox="0 0 180 180">
+                            <circle class="gauge-bg" cx="90" cy="90" r="78"/>
+                            <circle class="gauge-fill" id="gaugeFill" cx="90" cy="90" r="78" stroke-dasharray="490" stroke-dashoffset="490"/>
+                        </svg>
+                        <div class="gauge-text">
+                            <div class="gauge-pct" id="gaugePct">0%</div>
+                            <div class="gauge-label">similarity</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="recommendation" id="recBanner">
+                    <div class="rec-icon" id="recIcon"></div>
+                    <div>
+                        <div class="rec-text" id="recText">-</div>
+                        <div class="rec-detail" id="recDetail">-</div>
+                    </div>
+                </div>
+                <div class="details-grid">
+                    <div class="detail-item"><div class="detail-label">Symptom Checked</div><div class="detail-value" id="detailSymptom">-</div></div>
+                    <div class="detail-item"><div class="detail-label">Gallery Size</div><div class="detail-value" id="detailGallery">-</div></div>
+                    <div class="detail-item"><div class="detail-label">References Used</div><div class="detail-value" id="detailTopN">-</div></div>
+                    <div class="detail-item"><div class="detail-label">Model</div><div class="detail-value" id="detailModel">-</div></div>
+                </div>
+                <div class="thresholds">
+                    <div class="threshold-item high-zone">Take Action<br>&ge;80%</div>
+                    <div class="threshold-item medium-zone">Monitor<br>60-79%</div>
+                    <div class="threshold-item low-zone">Low Concern<br>&lt;60%</div>
+                </div>
+                <div class="btn-row" style="margin-top:1.25rem;">
+                    <button class="btn btn-primary" onclick="tryAnother()">Try Another Photo</button>
+                    <button class="btn btn-outline" onclick="startOver()">Change Symptom</button>
+                </div>
+            </div>
+
+            <!-- Right: Reference images (also shown in result) -->
+            <div class="ref-panel" id="refPanelResult">
+                <h3 id="refTitleResult">Reference Images</h3>
+                <div class="ref-subtitle" id="refSubtitleResult">-</div>
+                <div id="refContentResult"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Engine Comparison Results -->
+<div class="result-section" id="compareSection">
+    <div class="card">
+        <h2 style="margin-bottom:0.25rem;">Engine Comparison Results</h2>
+        <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem;" id="compareSubtitle">-</p>
+        <div id="compareResults"></div>
+        <div class="btn-row" style="margin-top:1.25rem;">
+            <button class="btn btn-primary" onclick="tryAnother()">Try Another Photo</button>
+            <button class="btn btn-outline" onclick="startOver()">Change Symptom</button>
+        </div>
+    </div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+    <img id="lightboxImg" src="" alt="Reference">
+    <div class="lightbox-label" id="lightboxLabel"></div>
+</div>
+
+<!-- Spinner -->
+<div class="spinner-overlay" id="spinner">
+    <div class="spinner"></div>
+    <div class="spinner-text">Analyzing your image...</div>
+</div>
+
+<!-- Error toast -->
+<div class="error-toast" id="errorToast"></div>
+
+<script>
+const API_BASE = 'http://localhost:8000';
+let selectedSymptomId = null;
+let selectedSymptomName = null;
+let selectedFile = null;
+let serverModel = 'unknown';
+
+const SYMPTOM_ICONS = {
+    burnt_appearance: '🔥', fruit_bored_holes: '🕳️', fruit_cracking: '🍎',
+    galls: '🫒', leaf_chewed_portion: '🐛', leaf_color_change: '🍂',
+    leaf_healthy: '🌿', leaf_shape_change: '🍃', stem_bored_holes: '🪵',
+    stem_cracking: '🌾'
+};
+
+async function init() {
+    try {
+        const res = await fetch(`${API_BASE}/health`);
+        const data = await res.json();
+        document.getElementById('statusDot').className = 'status-dot online';
+        document.getElementById('statusText').textContent = `Server online — ${data.model} model — ${data.symptoms_loaded} symptoms`;
+        serverModel = data.model;
+        loadGallery();
+        loadSettings();
+    } catch (e) {
+        document.getElementById('statusDot').className = 'status-dot offline';
+        document.getElementById('statusText').textContent = 'Server offline — start with: uvicorn src.api.server:app --port 8000';
+    }
+}
+
+async function loadGallery() {
+    try {
+        const res = await fetch(`${API_BASE}/gallery`);
+        const data = await res.json();
+        const grid = document.getElementById('symptomGrid');
+        grid.innerHTML = '';
+        data.symptoms.forEach(s => {
+            const card = document.createElement('div');
+            card.className = 'symptom-card';
+            card.dataset.id = s.symptom_id;
+            card.innerHTML = `
+                <div class="symptom-icon">${SYMPTOM_ICONS[s.symptom_id] || '🌱'}</div>
+                <div class="symptom-name">${s.display_name}</div>
+                <div class="symptom-count">${s.image_count} references</div>
+            `;
+            card.onclick = () => selectSymptom(s.symptom_id, s.display_name);
+            grid.appendChild(card);
+        });
+    } catch (e) {
+        showError('Failed to load symptom gallery');
+    }
+}
+
+function selectSymptom(id, name) {
+    selectedSymptomId = id;
+    selectedSymptomName = name;
+    document.querySelectorAll('.symptom-card').forEach(c => c.classList.remove('selected'));
+    document.querySelector(`[data-id="${id}"]`).classList.add('selected');
+    document.getElementById('selectedSymptomName').textContent = name;
+
+    setStep(2);
+    document.getElementById('uploadSection').classList.add('visible');
+    document.getElementById('resultSection').classList.remove('visible');
+    clearUpload();
+    loadReferenceImages(id, name, 'refPanel', 'refTitle', 'refSubtitle', 'refContent');
+}
+
+async function loadReferenceImages(symptomId, displayName, panelId, titleId, subtitleId, contentId) {
+    const panel = document.getElementById(panelId);
+    const titleEl = document.getElementById(titleId);
+    const subtitleEl = document.getElementById(subtitleId);
+    const contentEl = document.getElementById(contentId);
+
+    titleEl.innerHTML = `Reference Images <span class="ref-count-badge">Loading...</span>`;
+    subtitleEl.textContent = `What "${displayName}" looks like`;
+    contentEl.innerHTML = '<div class="ref-loading">Loading reference images...</div>';
+
+    try {
+        const res = await fetch(`${API_BASE}/gallery/${symptomId}/images?limit=30`);
+        const data = await res.json();
+
+        titleEl.innerHTML = `Reference Images <span class="ref-count-badge">${data.images.length} shown</span>`;
+
+        if (data.images.length === 0) {
+            contentEl.innerHTML = '<div class="ref-loading">No reference images available</div>';
+            return;
+        }
+
+        const grid = document.createElement('div');
+        grid.className = 'ref-grid';
+
+        data.images.forEach(img => {
+            const thumb = document.createElement('img');
+            thumb.className = 'ref-thumb';
+            thumb.src = `${API_BASE}${img.url}`;
+            thumb.alt = img.filename;
+            thumb.title = img.filename;
+            thumb.loading = 'lazy';
+            thumb.onclick = () => openLightbox(`${API_BASE}${img.url}`, img.filename);
+            grid.appendChild(thumb);
+        });
+
+        contentEl.innerHTML = '';
+        contentEl.appendChild(grid);
+    } catch (e) {
+        contentEl.innerHTML = '<div class="ref-loading">Failed to load reference images</div>';
+    }
+}
+
+function openLightbox(src, label) {
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('lightboxLabel').textContent = label;
+    document.getElementById('lightbox').classList.add('visible');
+}
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('visible');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+// File upload
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+uploadArea.onclick = () => fileInput.click();
+uploadArea.ondragover = (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); };
+uploadArea.ondragleave = () => uploadArea.classList.remove('dragover');
+uploadArea.ondrop = (e) => { e.preventDefault(); uploadArea.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); };
+fileInput.onchange = () => { if (fileInput.files.length) handleFile(fileInput.files[0]); };
+
+function handleFile(file) {
+    if (!file.type.match(/^image\/(jpeg|png|jpg)$/)) { showError('Only JPG and PNG files are accepted'); return; }
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        document.getElementById('previewImg').src = e.target.result;
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(0) + ' KB';
+        document.getElementById('previewContainer').classList.add('visible');
+        uploadArea.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearUpload() {
+    selectedFile = null; fileInput.value = '';
+    document.getElementById('previewContainer').classList.remove('visible');
+    uploadArea.style.display = '';
+}
+
+// Verify
+async function verifyImage() {
+    if (!selectedFile || !selectedSymptomId) return;
+    document.getElementById('spinner').classList.add('visible');
+    try {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        const res = await fetch(`${API_BASE}/verify/${selectedSymptomId}`, { method: 'POST', body: formData });
+        if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Verification failed'); }
+        const data = await res.json();
+        showResult(data);
+    } catch (e) { showError(e.message); }
+    finally { document.getElementById('spinner').classList.remove('visible'); }
+}
+
+function showResult(data) {
+    const r = data.result;
+    const pct = r.similarity_pct;
+    const conf = r.confidence;
+
+    setStep(3);
+    document.getElementById('uploadSection').classList.remove('visible');
+    document.getElementById('resultSection').classList.add('visible');
+
+    const iconEl = document.getElementById('resultIcon');
+    iconEl.className = `result-icon ${conf}`;
+    iconEl.textContent = conf === 'high' ? '⚠️' : conf === 'medium' ? '👁️' : '✅';
+
+    const titles = { high: 'High Match Detected', medium: 'Moderate Match', low: 'Low Match' };
+    document.getElementById('resultTitle').textContent = titles[conf];
+    document.getElementById('resultSubtitle').textContent = `Your image vs ${r.symptom_name} reference gallery`;
+
+    const circumference = 2 * Math.PI * 78;
+    const offset = circumference - (pct / 100) * circumference;
+    const fill = document.getElementById('gaugeFill');
+    fill.className.baseVal = `gauge-fill ${conf}`;
+    fill.style.strokeDasharray = circumference;
+    requestAnimationFrame(() => { fill.style.strokeDashoffset = offset; });
+
+    const pctEl = document.getElementById('gaugePct');
+    pctEl.className = `gauge-pct ${conf}`;
+    animateNumber(pctEl, pct);
+
+    const recBanner = document.getElementById('recBanner');
+    recBanner.className = `recommendation ${conf}`;
+    const recIcons = { high: '🚨', medium: '🔍', low: '👍' };
+    document.getElementById('recIcon').textContent = recIcons[conf];
+    document.getElementById('recText').textContent = r.recommendation;
+    const recDetails = {
+        high: 'The uploaded image closely matches this symptom. Consult an agricultural expert for confirmation and treatment.',
+        medium: 'There is a moderate resemblance. Observe the crop over the next few days and compare again.',
+        low: 'The image does not strongly resemble this symptom. Your crop may be healthy or affected by something else.'
+    };
+    document.getElementById('recDetail').textContent = recDetails[conf];
+
+    document.getElementById('detailSymptom').textContent = r.symptom_name;
+    document.getElementById('detailGallery').textContent = `${r.gallery_size} images`;
+    document.getElementById('detailTopN').textContent = `Top ${r.top_n_used} averaged`;
+    document.getElementById('detailModel').textContent = serverModel === 'fine-tuned' ? 'Fine-tuned DINOv2' : 'Baseline DINOv2';
+
+    // Load reference images in result panel too
+    loadReferenceImages(selectedSymptomId, selectedSymptomName, 'refPanelResult', 'refTitleResult', 'refSubtitleResult', 'refContentResult');
+}
+
+function animateNumber(el, target) {
+    let current = 0; const step = target / 40;
+    const timer = setInterval(() => {
+        current += step;
+        if (current >= target) { current = target; clearInterval(timer); }
+        el.textContent = current.toFixed(1) + '%';
+    }, 25);
+}
+
+function tryAnother() {
+    document.getElementById('resultSection').classList.remove('visible');
+    document.getElementById('compareSection').classList.remove('visible');
+    document.getElementById('uploadSection').classList.add('visible');
+    clearUpload(); setStep(2);
+    loadReferenceImages(selectedSymptomId, selectedSymptomName, 'refPanel', 'refTitle', 'refSubtitle', 'refContent');
+}
+
+function startOver() {
+    document.getElementById('resultSection').classList.remove('visible');
+    document.getElementById('compareSection').classList.remove('visible');
+    document.getElementById('uploadSection').classList.remove('visible');
+    selectedSymptomId = null; selectedSymptomName = null;
+    document.querySelectorAll('.symptom-card').forEach(c => c.classList.remove('selected'));
+    setStep(1);
+}
+
+document.getElementById('changeSymptom').onclick = (e) => { e.preventDefault(); startOver(); };
+
+function setStep(n) {
+    [1,2,3].forEach(i => {
+        const el = document.getElementById(`step${i}`);
+        el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+    });
+}
+
+function showError(msg) {
+    const toast = document.getElementById('errorToast');
+    toast.textContent = msg; toast.classList.add('visible');
+    setTimeout(() => toast.classList.remove('visible'), 4000);
+}
+
+// ── Compare Engines ──
+async function compareEngines() {
+    if (!selectedFile || !selectedSymptomId) return;
+    document.getElementById('spinner').classList.add('visible');
+    document.querySelector('.spinner-text').textContent = 'Running all engines... this may take a minute';
+
+    try {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        const res = await fetch(`${API_BASE}/compare-engines/${selectedSymptomId}`, { method: 'POST', body: formData });
+        if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Comparison failed'); }
+        const data = await res.json();
+        showComparisonResults(data);
+    } catch (e) { showError(e.message); }
+    finally {
+        document.getElementById('spinner').classList.remove('visible');
+        document.querySelector('.spinner-text').textContent = 'Analyzing your image...';
+    }
+}
+
+function showComparisonResults(data) {
+    setStep(3);
+    document.getElementById('uploadSection').classList.remove('visible');
+    document.getElementById('resultSection').classList.remove('visible');
+    document.getElementById('compareSection').classList.add('visible');
+
+    document.getElementById('compareSubtitle').textContent =
+        `Testing "${data.symptom_name}" with ${data.results.length} engines — sorted by similarity`;
+
+    const container = document.getElementById('compareResults');
+    container.innerHTML = '';
+
+    const familyColors = { DINOv2: 'dino', CLIP: 'clip', CNN: 'cnn' };
+
+    data.results.forEach((r, idx) => {
+        if (r.error) return;
+        const conf = r.confidence;
+        const rankClass = idx < 3 ? `rank-${idx + 1}` : '';
+        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
+
+        const card = document.createElement('div');
+        card.className = `engine-card ${rankClass}`;
+        card.innerHTML = `
+            <div>
+                <div class="engine-name">${medal} ${r.engine_name}</div>
+                <div class="engine-meta">
+                    <span class="engine-badge ${familyColors[r.family] || ''}">${r.family}</span>
+                    ${r.params} params &middot; ${r.embed_dim}-dim embeddings &middot; Top ${r.top_n_used} averaged
+                </div>
+                <div class="engine-timing">${r.inference_ms}ms total (${r.gallery_size} reference images)</div>
+            </div>
+            <div class="engine-score">
+                <div class="engine-pct ${conf}">${r.similarity_pct}%</div>
+                <div class="engine-conf">${r.recommendation}</div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+
+    // Summary bar
+    const summary = document.createElement('div');
+    summary.style.cssText = 'margin-top:1rem; padding:1rem; background:#f8f9fa; border-radius:8px; font-size:0.85rem;';
+    const best = data.results[0];
+    const worst = data.results[data.results.length - 1];
+    summary.innerHTML = `
+        <strong>Summary:</strong> Best engine is <strong>${best.engine_name}</strong> (${best.similarity_pct}%).
+        Spread across engines: ${worst.similarity_pct}% — ${best.similarity_pct}%.
+        Threshold: Take Action &ge;${data.thresholds.high}%, Monitor &ge;${data.thresholds.medium}%.
+    `;
+    container.appendChild(summary);
+}
+
+// ── Settings ──
+const DEFAULTS = {
+    min_laplacian_var: 15, min_brightness: 30, max_brightness: 240,
+    max_file_size_mb: 100, top_n_mean: 5, threshold_high: 80, threshold_medium: 60
+};
+
+function toggleSettings() {
+    document.getElementById('settingsDrawer').classList.toggle('visible');
+}
+
+function updateSettingDisplay(input, valId) {
+    document.getElementById(valId).textContent = input.value;
+}
+
+function setSlider(id, valId, value) {
+    const el = document.getElementById(id);
+    el.value = value;
+    document.getElementById(valId).textContent = value;
+}
+
+async function loadSettings() {
+    try {
+        const res = await fetch(`${API_BASE}/settings`);
+        const data = await res.json();
+        setSlider('sBlur', 'sBlurVal', data.validation.min_laplacian_var);
+        setSlider('sBrightMin', 'sBrightMinVal', data.validation.min_brightness);
+        setSlider('sBrightMax', 'sBrightMaxVal', data.validation.max_brightness);
+        setSlider('sFileSize', 'sFileSizeVal', data.validation.max_file_size_mb);
+        setSlider('sTopN', 'sTopNVal', data.similarity.top_n_mean);
+        setSlider('sThreshHigh', 'sThreshHighVal', data.similarity.threshold_high);
+        setSlider('sThreshMed', 'sThreshMedVal', data.similarity.threshold_medium);
+    } catch (e) { /* server offline */ }
+}
+
+async function saveSettings() {
+    try {
+        const body = {
+            validation: {
+                max_file_size_mb: parseFloat(document.getElementById('sFileSize').value),
+                min_brightness: parseFloat(document.getElementById('sBrightMin').value),
+                max_brightness: parseFloat(document.getElementById('sBrightMax').value),
+                min_laplacian_var: parseFloat(document.getElementById('sBlur').value),
+            },
+            similarity: {
+                top_n_mean: parseInt(document.getElementById('sTopN').value),
+                threshold_high: parseFloat(document.getElementById('sThreshHigh').value),
+                threshold_medium: parseFloat(document.getElementById('sThreshMed').value),
+            }
+        };
+        const res = await fetch(`${API_BASE}/settings`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        if (res.ok) {
+            const el = document.getElementById('settingsSaved');
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 2000);
+        } else { showError('Failed to save settings'); }
+    } catch (e) { showError('Server offline'); }
+}
+
+function resetSettings() {
+    setSlider('sBlur', 'sBlurVal', DEFAULTS.min_laplacian_var);
+    setSlider('sBrightMin', 'sBrightMinVal', DEFAULTS.min_brightness);
+    setSlider('sBrightMax', 'sBrightMaxVal', DEFAULTS.max_brightness);
+    setSlider('sFileSize', 'sFileSizeVal', DEFAULTS.max_file_size_mb);
+    setSlider('sTopN', 'sTopNVal', DEFAULTS.top_n_mean);
+    setSlider('sThreshHigh', 'sThreshHighVal', DEFAULTS.threshold_high);
+    setSlider('sThreshMed', 'sThreshMedVal', DEFAULTS.threshold_medium);
+    saveSettings();
+}
+
+init();
+</script>
+</body>
+</html>

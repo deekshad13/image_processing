@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rootstalk — Project Showcase</title>
+    <style>
+        :root { --bg: #f8faf8; --card: #fff; --border: #dde5dd; --text: #1a2e1a; --muted: #5a6f5a; --green: #2d7a3a; --green-light: #e8f5e9; --green-dark: #1b5e20; --blue: #1565c0; --amber: #e67e00; --red: #c62828; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+        .hero { background: linear-gradient(135deg, var(--green-dark), var(--green)); color: white; padding: 3rem 2rem; text-align: center; }
+        .hero h1 { font-size: 2.2rem; margin-bottom: 0.5rem; }
+        .hero p { font-size: 1.1rem; opacity: 0.9; max-width: 700px; margin: 0 auto; }
+        .container { max-width: 950px; margin: 0 auto; padding: 2rem 1.5rem; }
+        h2 { font-size: 1.4rem; margin: 2.5rem 0 1rem; color: var(--green-dark); }
+        h3 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.25rem; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+        th, td { padding: 0.6rem 0.75rem; border: 1px solid var(--border); text-align: left; }
+        th { background: #f1f5f1; font-weight: 600; }
+        code { background: #e9ede9; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .badge-green { background: var(--green-light); color: var(--green); }
+        .badge-blue { background: #e3f2fd; color: var(--blue); }
+        .badge-amber { background: #fff3e0; color: var(--amber); }
+        ul { margin: 0.5rem 0 0.5rem 1.5rem; }
+        li { margin-bottom: 0.4rem; }
+        .flow-box { display: inline-block; padding: 0.5rem 1rem; border: 2px solid var(--green); border-radius: 8px; margin: 0.25rem; font-size: 0.85rem; font-weight: 500; background: var(--green-light); }
+        .flow-arrow { display: inline-block; font-size: 1.2rem; color: var(--muted); margin: 0 0.15rem; vertical-align: middle; }
+        .flow { text-align: center; padding: 1.5rem; background: var(--card); border-radius: 12px; border: 1px solid var(--border); margin: 1rem 0; }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1rem 0; }
+        .stat { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; text-align: center; }
+        .stat-num { font-size: 2rem; font-weight: 700; color: var(--green); }
+        .stat-label { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+        .timeline { position: relative; padding-left: 2rem; }
+        .timeline::before { content: ''; position: absolute; left: 0.5rem; top: 0; bottom: 0; width: 2px; background: var(--border); }
+        .timeline-item { position: relative; margin-bottom: 1.5rem; }
+        .timeline-item::before { content: ''; position: absolute; left: -1.65rem; top: 0.5rem; width: 12px; height: 12px; border-radius: 50%; background: var(--green); border: 2px solid white; }
+        .timeline-item.future::before { background: var(--border); }
+        .timeline-title { font-weight: 600; font-size: 0.95rem; }
+        .timeline-desc { font-size: 0.85rem; color: var(--muted); margin-top: 0.2rem; }
+        .screenshot { width: 100%; border-radius: 8px; border: 1px solid var(--border); margin: 0.75rem 0; }
+        hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    </style>
+</head>
+<body>
+
+<div class="hero">
+    <h1>Rootstalk</h1>
+    <p>Crop Disease Image Intelligence Engine for EywaFarm</p>
+    <p style="font-size:0.85rem; opacity:0.7; margin-top:0.75rem;">Single-symptom verification &middot; Multi-engine comparison &middot; Configurable thresholds &middot; Reference gallery</p>
+</div>
+
+<div class="container">
+
+<!-- ─── What It Does ─── -->
+<h2>What Rootstalk Does</h2>
+<div class="card">
+    <p>Rootstalk helps farmers verify crop disease symptoms. When a farmer sees something wrong with their crop and navigates to a symptom page (e.g., "Galls"), they can upload a photo and get an instant similarity score telling them how closely their crop matches that symptom.</p>
+    <p style="margin-top:0.75rem;"><strong>This is not a diagnosis engine.</strong> It's a decision support tool that guides the farmer's judgment with data: "Your image is 73% similar to Galls — Monitor and recheck."</p>
+</div>
+
+<div class="flow">
+    <span class="flow-box">Farmer on<br>"Galls" page</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box">Captures<br>field photo</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box">Compare against<br>Galls gallery only</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box">73% match<br>"Monitor"</span>
+</div>
+
+<div class="stat-grid">
+    <div class="stat"><div class="stat-num">10</div><div class="stat-label">Symptom Classes</div></div>
+    <div class="stat"><div class="stat-num">1,641</div><div class="stat-label">Reference Images</div></div>
+    <div class="stat"><div class="stat-num">6</div><div class="stat-label">AI Engines</div></div>
+    <div class="stat"><div class="stat-num">&lt;2s</div><div class="stat-label">Verification Time</div></div>
+</div>
+
+<hr>
+
+<!-- ─── The Problem We Solved ─── -->
+<h2>The Problem We Solved</h2>
+<div class="card">
+    <h3>Before (Incorrect Approach)</h3>
+    <p>The initial prototype searched across ALL symptoms and returned "Your image is most similar to Leaf Rust." This is a <strong>disease identification</strong> tool — not what was needed.</p>
+
+    <h3 style="margin-top:1rem;">After (Corrected Approach)</h3>
+    <p>Rootstalk now performs <strong>single-symptom verification</strong>. The farmer is already on a symptom page. They want to know: "Does my plant match THIS symptom?" — a fundamentally different, more useful question.</p>
+</div>
+
+<hr>
+
+<!-- ─── How It Works ─── -->
+<h2>How the Technology Works</h2>
+
+<div class="card">
+    <h3>Step 1: Image → Embedding Vector</h3>
+    <p>A vision AI model (like DINOv2) converts any image into a high-dimensional number vector (e.g., 384 numbers). Images that <em>look similar</em> produce <em>similar vectors</em>. This is the core insight that makes image comparison possible without pixel-by-pixel matching.</p>
+
+    <h3 style="margin-top:1rem;">Step 2: Gallery of Reference Vectors</h3>
+    <p>All reference symptom images are pre-converted to vectors and stored. When a farmer uploads a photo, their image is also converted to a vector in the same space.</p>
+
+    <h3 style="margin-top:1rem;">Step 3: Cosine Similarity</h3>
+    <p>The angle between the farmer's image vector and each reference vector is measured. Smaller angle = higher similarity. The top-N most similar reference vectors are averaged to produce a robust percentage score.</p>
+
+    <h3 style="margin-top:1rem;">Step 4: Recommendation</h3>
+    <p>Based on configurable thresholds:</p>
+    <table>
+        <tr><th>Similarity</th><th>Recommendation</th><th>Meaning</th></tr>
+        <tr><td>&ge;80%</td><td><span class="badge badge-amber">Take Action</span></td><td>High confidence — consult an expert</td></tr>
+        <tr><td>60–79%</td><td><span class="badge badge-blue">Monitor</span></td><td>Moderate — observe and recheck</td></tr>
+        <tr><td>&lt;60%</td><td><span class="badge badge-green">Low Concern</span></td><td>Likely not a match</td></tr>
+    </table>
+</div>
+
+<hr>
+
+<!-- ─── Multi-Engine Comparison ─── -->
+<h2>Multi-Engine Model Comparison</h2>
+<div class="card">
+    <p>Different AI models "see" images differently. To find the best model for crop disease verification, Rootstalk supports <strong>6 different vision AI engines</strong> that can be tested side by side on the same image.</p>
+</div>
+
+<table>
+    <thead>
+        <tr><th>Engine</th><th>Family</th><th>Parameters</th><th>Embedding Dim</th><th>Best For</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>DINOv2 ViT-S/14</strong></td>
+            <td><span class="badge badge-blue">DINOv2</span></td>
+            <td>21M</td><td>384</td>
+            <td>Best general visual similarity. Lightweight. Current default.</td>
+        </tr>
+        <tr>
+            <td><strong>DINOv2 ViT-B/14</strong></td>
+            <td><span class="badge badge-blue">DINOv2</span></td>
+            <td>86M</td><td>768</td>
+            <td>Fine-grained distinctions. Better for subtle disease differences.</td>
+        </tr>
+        <tr>
+            <td><strong>CLIP ViT-B/32</strong></td>
+            <td><span class="badge badge-amber">CLIP</span></td>
+            <td>151M</td><td>512</td>
+            <td>Semantic understanding. Knows what things "are," not just how they look.</td>
+        </tr>
+        <tr>
+            <td><strong>CLIP ViT-L/14</strong></td>
+            <td><span class="badge badge-amber">CLIP</span></td>
+            <td>428M</td><td>768</td>
+            <td>Richest semantic features. Best for conceptual matching.</td>
+        </tr>
+        <tr>
+            <td><strong>ConvNeXt Base</strong></td>
+            <td><span class="badge badge-green">CNN</span></td>
+            <td>89M</td><td>1024</td>
+            <td>Local texture patterns. Good for texture-based diseases (spots, rust).</td>
+        </tr>
+        <tr>
+            <td><strong>ResNet-50</strong></td>
+            <td><span class="badge badge-green">CNN</span></td>
+            <td>25M</td><td>2048</td>
+            <td>Classic baseline. Fastest inference. Reference benchmark.</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="card">
+    <h3>Why Multiple Engines?</h3>
+    <ul>
+        <li><strong>DINOv2</strong> (Meta) — Self-supervised learning. Understands visual structure without needing labels. Best for "does this look similar?"</li>
+        <li><strong>CLIP</strong> (OpenAI) — Trained on 2 billion image-text pairs. Understands what things <em>are</em>. Better at "is this a gall?" conceptually.</li>
+        <li><strong>ConvNeXt / ResNet</strong> — Traditional CNNs. Excellent at local texture patterns (spots, cracks, holes). Fast and lightweight.</li>
+    </ul>
+    <p style="margin-top:0.75rem;">By testing the same image across all engines, we can determine which model family works best for each type of crop symptom — data-driven model selection rather than guesswork.</p>
+</div>
+
+<hr>
+
+<!-- ─── Features ─── -->
+<h2>System Features</h2>
+
+<div class="card">
+    <h3>Image Validation</h3>
+    <p>Before processing, every uploaded image is checked for:</p>
+    <ul>
+        <li><strong>Format:</strong> JPG/PNG only</li>
+        <li><strong>Corruption:</strong> OpenCV decode check</li>
+        <li><strong>Brightness:</strong> Rejects too dark (&lt;30) or too bright (&gt;240) images</li>
+        <li><strong>Blur:</strong> Laplacian variance check — rejects motion-blurred photos</li>
+        <li><strong>Size:</strong> Configurable max file size</li>
+    </ul>
+    <p style="margin-top:0.5rem;">All thresholds are <strong>configurable at runtime</strong> via the Settings panel or API — no server restart needed.</p>
+</div>
+
+<div class="card">
+    <h3>Reference Image Gallery</h3>
+    <p>When verifying a symptom, the farmer sees a grid of reference images showing what that symptom looks like. They can click any reference to view it full-size and visually compare with their own photo.</p>
+</div>
+
+<div class="card">
+    <h3>Runtime Configuration</h3>
+    <p>All critical parameters are adjustable without restarting:</p>
+    <ul>
+        <li>Blur threshold, brightness range, file size limit</li>
+        <li>Take Action / Monitor thresholds</li>
+        <li>Number of reference images to average (Top-N)</li>
+    </ul>
+</div>
+
+<hr>
+
+<!-- ─── Dataset ─── -->
+<h2>Current Dataset</h2>
+
+<table>
+    <thead><tr><th>Symptom</th><th>Images</th><th>Status</th></tr></thead>
+    <tbody>
+        <tr><td>Leaf Color Change</td><td>468</td><td><span class="badge badge-green">Strong</span></td></tr>
+        <tr><td>Leaf Chewed Portion</td><td>414</td><td><span class="badge badge-green">Strong</span></td></tr>
+        <tr><td>Leaf Shape Change</td><td>310</td><td><span class="badge badge-green">Strong</span></td></tr>
+        <tr><td>Leaf Healthy</td><td>200</td><td><span class="badge badge-green">Good</span></td></tr>
+        <tr><td>Fruit Bored Holes</td><td>93</td><td><span class="badge badge-green">Good</span></td></tr>
+        <tr><td>Stem Bored Holes</td><td>58</td><td><span class="badge badge-blue">Adequate</span></td></tr>
+        <tr><td>Burnt Appearance</td><td>46</td><td><span class="badge badge-blue">Adequate</span></td></tr>
+        <tr><td>Fruit Cracking</td><td>27</td><td><span class="badge badge-amber">Needs More</span></td></tr>
+        <tr><td>Galls</td><td>13</td><td><span class="badge badge-amber">Needs More</span></td></tr>
+        <tr><td>Stem Cracking</td><td>12</td><td><span class="badge badge-amber">Needs More</span></td></tr>
+    </tbody>
+</table>
+
+<hr>
+
+<!-- ─── Tech Stack ─── -->
+<h2>Technology Stack</h2>
+
+<table>
+    <tr><th>Component</th><th>Technology</th></tr>
+    <tr><td>Backend API</td><td>FastAPI (Python)</td></tr>
+    <tr><td>Vision Models</td><td>DINOv2, CLIP, ConvNeXt, ResNet via PyTorch, timm, open_clip</td></tr>
+    <tr><td>Image Processing</td><td>OpenCV, Pillow, torchvision</td></tr>
+    <tr><td>Similarity Search</td><td>NumPy vectorized cosine similarity</td></tr>
+    <tr><td>Configuration</td><td>YAML config + runtime API</td></tr>
+    <tr><td>Fine-tuning</td><td>PyTorch TripletMarginLoss (ArcFace planned)</td></tr>
+    <tr><td>Test UI</td><td>Single-page HTML/CSS/JS (no framework)</td></tr>
+</table>
+
+<hr>
+
+<!-- ─── API ─── -->
+<h2>API Reference</h2>
+
+<table>
+    <thead><tr><th>Method</th><th>Endpoint</th><th>Purpose</th></tr></thead>
+    <tbody>
+        <tr><td>GET</td><td><code>/health</code></td><td>Server status, model info, symptom count</td></tr>
+        <tr><td>GET</td><td><code>/gallery</code></td><td>All symptoms with IDs and image counts</td></tr>
+        <tr><td>GET</td><td><code>/gallery/{id}</code></td><td>Symptom detail</td></tr>
+        <tr><td>GET</td><td><code>/gallery/{id}/images</code></td><td>Reference image URLs for thumbnails</td></tr>
+        <tr><td>POST</td><td><code>/verify/{id}</code></td><td>Upload image, verify against one symptom</td></tr>
+        <tr><td>POST</td><td><code>/compare-engines/{id}</code></td><td>Compare image across all 6 AI engines</td></tr>
+        <tr><td>GET</td><td><code>/engines</code></td><td>List all available engine models</td></tr>
+        <tr><td>GET</td><td><code>/settings</code></td><td>Current validation/similarity config</td></tr>
+        <tr><td>PUT</td><td><code>/settings</code></td><td>Update config at runtime</td></tr>
+    </tbody>
+</table>
+
+<hr>
+
+<!-- ─── Roadmap ─── -->
+<h2>Roadmap</h2>
+
+<div class="timeline">
+    <div class="timeline-item">
+        <div class="timeline-title">Phase 1: Proof of Concept</div>
+        <div class="timeline-desc">DINOv2 similarity engine, 10 symptom classes, 1,641 reference images, basic API</div>
+    </div>
+    <div class="timeline-item">
+        <div class="timeline-title">Phase 2: Fine-Tuning</div>
+        <div class="timeline-desc">Triplet loss training, +27% precision improvement, two-phase training pipeline</div>
+    </div>
+    <div class="timeline-item">
+        <div class="timeline-title">Phase 3: Production Architecture</div>
+        <div class="timeline-desc">Single-symptom verification, multi-engine comparison, configurable thresholds, reference gallery UI, image validation</div>
+    </div>
+    <div class="timeline-item future">
+        <div class="timeline-title">Phase 4: Model Optimization (Next)</div>
+        <div class="timeline-desc">Deploy fine-tuned model, ArcFace loss, data augmentation, best engine selection based on comparison results</div>
+    </div>
+    <div class="timeline-item future">
+        <div class="timeline-title">Phase 5: Scale</div>
+        <div class="timeline-desc">PlantVillage dataset integration (54K+ images), feedback learning loop, mobile API optimization, ONNX inference</div>
+    </div>
+</div>
+
+<hr>
+
+<div class="card" style="text-align:center; border: 2px solid var(--green);">
+    <p style="font-size:1.1rem; font-weight:600; color:var(--green);">Built for EywaFarm / Roots Talk Platform</p>
+    <p style="color:var(--muted); font-size:0.85rem; margin-top:0.25rem;">Crop Disease Decision Support System</p>
+</div>
+
+</div>
+</body>
+</html>

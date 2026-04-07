@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rootstalk Image Processing — Project Review</title>
+    <style>
+        :root {
+            --bg: #f8f9fa;
+            --card: #ffffff;
+            --border: #dee2e6;
+            --text: #212529;
+            --muted: #6c757d;
+            --red: #dc3545;
+            --red-bg: #fff5f5;
+            --green: #198754;
+            --green-bg: #f0fdf4;
+            --amber: #d97706;
+            --amber-bg: #fffbeb;
+            --blue: #0d6efd;
+            --blue-bg: #eff6ff;
+            --purple: #7c3aed;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 2rem;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        h1 { font-size: 1.8rem; margin-bottom: 0.25rem; }
+        h2 { font-size: 1.35rem; margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border); }
+        h3 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; }
+
+        .subtitle { color: var(--muted); margin-bottom: 2rem; }
+        .date { color: var(--muted); font-size: 0.85rem; }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-red { border-left: 4px solid var(--red); background: var(--red-bg); }
+        .card-green { border-left: 4px solid var(--green); background: var(--green-bg); }
+        .card-amber { border-left: 4px solid var(--amber); background: var(--amber-bg); }
+        .card-blue { border-left: 4px solid var(--blue); background: var(--blue-bg); }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-red { background: var(--red); color: white; }
+        .badge-amber { background: var(--amber); color: white; }
+        .badge-green { background: var(--green); color: white; }
+        .badge-blue { background: var(--blue); color: white; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+        th, td {
+            padding: 0.6rem 0.75rem;
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+        th { background: #f1f3f5; font-weight: 600; }
+        tr:nth-child(even) { background: #f8f9fa; }
+
+        code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+        }
+
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            margin: 0.75rem 0;
+        }
+
+        .flow-diagram {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .flow-box {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            margin: 0.25rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .flow-arrow {
+            display: inline-block;
+            font-size: 1.2rem;
+            color: var(--muted);
+            margin: 0 0.25rem;
+            vertical-align: middle;
+        }
+        .flow-box.highlight { border-color: var(--red); background: var(--red-bg); }
+        .flow-box.correct { border-color: var(--green); background: var(--green-bg); }
+
+        ul, ol { margin: 0.5rem 0 0.5rem 1.5rem; }
+        li { margin-bottom: 0.35rem; }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .verdict {
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin: 0.5rem 0;
+        }
+
+        .file-status { font-family: monospace; font-size: 0.85rem; }
+        .file-empty { color: var(--red); }
+        .file-ok { color: var(--green); }
+
+        .toc { margin: 1.5rem 0; }
+        .toc a { color: var(--blue); text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        .toc li { margin-bottom: 0.25rem; }
+
+        .section-num { color: var(--purple); font-weight: 700; margin-right: 0.25rem; }
+
+        hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    </style>
+</head>
+<body>
+
+<h1>Rootstalk Image Processing — Full Project Review</h1>
+<p class="subtitle">Crop Disease Decision Support System — Architecture, Gap Analysis &amp; Recommendations</p>
+<p class="date">Review Date: 23 March 2026 &nbsp;|&nbsp; Codebase: <code>image_processing/</code> repository</p>
+
+<hr>
+
+<div class="toc">
+    <strong>Contents</strong>
+    <ol>
+        <li><a href="#s1">What the Project Is Supposed to Do (Correct Requirement)</a></li>
+        <li><a href="#s2">What the Current Code Actually Does (Deviation)</a></li>
+        <li><a href="#s3">The Core Requirement Mismatch — Detailed Breakdown</a></li>
+        <li><a href="#s4">Full Codebase Audit — File-by-File Status</a></li>
+        <li><a href="#s5">Technology Review — Current Stack vs Market Alternatives</a></li>
+        <li><a href="#s6">Architecture Issues &amp; Technical Debt</a></li>
+        <li><a href="#s7">What's Working Well (Credit Where Due)</a></li>
+        <li><a href="#s8">Recommended Architecture — Corrected Design</a></li>
+        <li><a href="#s9">Priority Action Items</a></li>
+    </ol>
+</div>
+
+<hr>
+
+<!-- ───────────────────────────────────────────────── -->
+<h2 id="s1"><span class="section-num">1.</span> What the Project Is Supposed to Do</h2>
+
+<div class="card card-green">
+    <strong>Correct Requirement:</strong>
+    <p style="margin-top:0.5rem;">A farmer is <strong>already on a specific symptom page</strong> (e.g., "Leaf Rust" or "Galls"). They are looking at reference images of that symptom and wondering: <em>"Does my plant have this?"</em></p>
+    <p style="margin-top:0.5rem;">They capture a photo of their crop. The system compares that photo <strong>only against that one symptom's reference gallery</strong> and returns a <strong>single similarity percentage</strong>.</p>
+    <ul style="margin-top:0.75rem;">
+        <li><strong>Input:</strong> One uploaded image + one symptom ID (the page they're on)</li>
+        <li><strong>Output:</strong> "Your image is 73% similar to Galls"</li>
+        <li><strong>Decision support:</strong> &ge;80% = "Take Action", 60-79% = "Monitor", &lt;60% = "Low Concern"</li>
+    </ul>
+</div>
+
+<div class="flow-diagram">
+    <strong>Correct Flow</strong><br><br>
+    <span class="flow-box correct">Farmer is on<br>"Galls" page</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box correct">Captures<br>field photo</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box correct">Compare ONLY<br>against Galls gallery</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box correct">Result: "73% match<br>to Galls — Monitor"</span>
+</div>
+
+<p>This is a <strong>1-to-1 confirmation task</strong>: "Does my image match <em>this</em> symptom?" — not a search across all symptoms.</p>
+
+<!-- ───────────────────────────────────────────────── -->
+<h2 id="s2"><span class="section-num">2.</span> What the Current Code Actually Does</h2>
+
+<div class="card card-red">
+    <strong>Current Implementation (Wrong):</strong>
+    <p style="margin-top:0.5rem;">The <code>POST /compare</code> endpoint accepts an image with <strong>no symptom ID</strong>. It compares the uploaded image against <strong>every symptom's embeddings in the entire gallery</strong>, ranks all of them, and returns the <strong>top 5 matches across all symptoms</strong>.</p>
+</div>
+
+<div class="flow-diagram">
+    <strong>Current (Incorrect) Flow</strong><br><br>
+    <span class="flow-box highlight">User uploads<br>image only</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box highlight">Compare against<br>ALL 10 symptoms</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box highlight">Return top 5 from<br>any symptom</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box highlight">"87% Leaf Rust,<br>73% Galls, 61%..."</span>
+</div>
+
+<h3>What the current <code>/compare</code> endpoint does (line by line):</h3>
+<pre>
+# routes.py — POST /compare
+# 1. Accepts file upload with NO symptom_id parameter
+# 2. Loops through EVERY symptom in GALLERY (all 10):
+for symptom, embeddings in GALLERY.items():
+    for ref_emb in embeddings:
+        sim = cosine_similarity(query_emb, ref_emb)
+        scores.append((sim, symptom))
+
+# 3. Sorts ALL scores, takes top 5 across ALL symptoms:
+scores.sort(reverse=True)
+top_matches = scores[:5]
+
+# 4. Returns multi-symptom results — NOT what was asked for
+</pre>
+
+<p>This is essentially a <strong>"What disease does my plant have?"</strong> engine — a fundamentally different product from <strong>"Does my plant match this specific symptom?"</strong>.</p>
+
+<!-- ───────────────────────────────────────────────── -->
+<h2 id="s3"><span class="section-num">3.</span> The Core Requirement Mismatch — Detailed Breakdown</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th style="width:30%">Aspect</th>
+            <th style="width:35%">What's Needed</th>
+            <th style="width:35%">What's Built</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>API Input</strong></td>
+            <td>Image file <strong>+ symptom_id</strong></td>
+            <td>Image file only (no symptom_id)</td>
+        </tr>
+        <tr>
+            <td><strong>Comparison scope</strong></td>
+            <td>Compare against <strong>one</strong> symptom's gallery</td>
+            <td>Compares against <strong>all 10</strong> symptoms</td>
+        </tr>
+        <tr>
+            <td><strong>Output</strong></td>
+            <td>Single similarity score for the target symptom</td>
+            <td>Top 5 ranked matches from any symptom</td>
+        </tr>
+        <tr>
+            <td><strong>Use case</strong></td>
+            <td>Confirmation: "Is this Galls?"</td>
+            <td>Discovery: "What disease is this?"</td>
+        </tr>
+        <tr>
+            <td><strong>User context</strong></td>
+            <td>Already on a symptom page, needs guidance</td>
+            <td>No context — open-ended search</td>
+        </tr>
+        <tr>
+            <td><strong>Evaluation metric</strong></td>
+            <td>Verification accuracy (true match vs false match)</td>
+            <td>Precision@K / Recall@K (retrieval metrics)</td>
+        </tr>
+        <tr>
+            <td><strong>Fine-tuning objective</strong></td>
+            <td>Better same-vs-different separation for each symptom</td>
+            <td>Better global ranking across all symptoms</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="card card-amber">
+    <strong>Impact:</strong> The entire evaluation pipeline (Precision@5, Recall@5, baseline vs fine-tuned comparisons) measures retrieval quality — "Did the correct symptom appear in top-K?" This is the wrong metric for a verification task. The correct metrics would be <strong>verification accuracy</strong>, <strong>AUC-ROC</strong> (can we separate match from non-match?), and <strong>threshold calibration</strong> (at what similarity % is the system reliable?).
+</div>
+
+<!-- ───────────────────────────────────────────────── -->
+<h2 id="s4"><span class="section-num">4.</span> Full Codebase Audit — File-by-File Status</h2>
+
+<h3>Source Code (<code>src/</code>)</h3>
+<table>
+    <thead>
+        <tr><th>File</th><th>Status</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="file-status">src/model/encoder.py</td>
+            <td><span class="badge badge-green">Working</span></td>
+            <td>Loads DINOv2, extracts 384-dim embeddings. Functional.</td>
+        </tr>
+        <tr>
+            <td class="file-status">src/model/similarity.py</td>
+            <td><span class="badge badge-green">Working</span></td>
+            <td>Cosine similarity + top-K matching + threshold labels. Logic is sound.</td>
+        </tr>
+        <tr>
+            <td class="file-status">src/model/fine_tune.py</td>
+            <td><span class="badge badge-green">Working</span></td>
+            <td>CropSimilarityModel with two-phase training. Checkpoint resume works.</td>
+        </tr>
+        <tr>
+            <td class="file-status">src/data/dataset.py</td>
+            <td><span class="badge badge-green">Working</span></td>
+            <td>TripletDataset for training. Functional but random sampling (no hard-negative mining).</td>
+        </tr>
+        <tr>
+            <td class="file-status">src/api/server.py</td>
+            <td><span class="badge badge-green">Working</span></td>
+            <td>FastAPI app setup. Minimal, functional.</td>
+        </tr>
+        <tr>
+            <td class="file-status">src/api/routes.py</td>
+            <td><span class="badge badge-red">Wrong Logic</span></td>
+            <td>Core flow is wrong — compares against all symptoms instead of one. Uses baseline model, not fine-tuned. Image validation is good.</td>
+        </tr>
+        <tr>
+            <td class="file-status">src/api/schemas.py</td>
+            <td><span class="badge badge-amber">Needs Change</span></td>
+            <td>Response models designed for multi-symptom results. Need redesign for single-symptom verification.</td>
+        </tr>
+        <tr>
+            <td class="file-status">src/data/preprocessing.py</td>
+            <td><span class="badge badge-red">Empty</span> <span style="color:var(--red)">0 bytes</span></td>
+            <td>Placeholder only — no preprocessing code exists.</td>
+        </tr>
+        <tr>
+            <td class="file-status">src/data/gallery_builder.py</td>
+            <td><span class="badge badge-red">Empty</span> <span style="color:var(--red)">0 bytes</span></td>
+            <td>Placeholder only — gallery building logic is in <code>scripts/build_gallery.py</code> instead.</td>
+        </tr>
+        <tr>
+            <td class="file-status">src/utils/metrics.py</td>
+            <td><span class="badge badge-red">Empty</span> <span style="color:var(--red)">0 bytes</span></td>
+            <td>Placeholder only — metric functions are in <code>scripts/evaluate.py</code> instead.</td>
+        </tr>
+        <tr>
+            <td class="file-status">src/utils/visualization.py</td>
+            <td><span class="badge badge-red">Empty</span> <span style="color:var(--red)">0 bytes</span></td>
+            <td>Placeholder only — no visualization code.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Scripts (<code>scripts/</code>)</h3>
+<table>
+    <thead>
+        <tr><th>File</th><th>Status</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="file-status">scripts/build_gallery.py</td>
+            <td><span class="badge badge-green">Working</span></td>
+            <td>Processes raw images into .npy embeddings. Core pipeline script.</td>
+        </tr>
+        <tr>
+            <td class="file-status">scripts/evaluate.py</td>
+            <td><span class="badge badge-amber">Wrong Metrics</span></td>
+            <td>Functional code, but measures retrieval (Precision@K) instead of verification accuracy.</td>
+        </tr>
+        <tr>
+            <td class="file-status">scripts/train.py</td>
+            <td><span class="badge badge-red">Empty</span> <span style="color:var(--red)">0 bytes</span></td>
+            <td>Placeholder — training logic lives in <code>src/model/fine_tune.py</code>.</td>
+        </tr>
+        <tr>
+            <td class="file-status">scripts/compute_embeddings.py</td>
+            <td><span class="badge badge-red">Empty</span> <span style="color:var(--red)">0 bytes</span></td>
+            <td>Placeholder — logic is in <code>scripts/build_gallery.py</code>.</td>
+        </tr>
+        <tr>
+            <td class="file-status">scripts/export_onnx.py</td>
+            <td><span class="badge badge-red">Empty</span> <span style="color:var(--red)">0 bytes</span></td>
+            <td>Planned but never implemented. No ONNX export exists.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Config &amp; Tests</h3>
+<table>
+    <thead>
+        <tr><th>File</th><th>Status</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="file-status">config/config.yaml</td>
+            <td><span class="badge badge-red">Empty</span></td>
+            <td>No configuration externalized. All values hardcoded across files.</td>
+        </tr>
+        <tr>
+            <td class="file-status">config/gallery_metadata.json</td>
+            <td><span class="badge badge-red">Empty</span></td>
+            <td>No metadata. Symptom list is hardcoded in build_gallery.py.</td>
+        </tr>
+        <tr>
+            <td class="file-status">tests/test_api.py</td>
+            <td><span class="badge badge-green">Working</span></td>
+            <td>7 tests covering health, gallery, validation, and compare. These test the <em>wrong</em> compare behavior though.</td>
+        </tr>
+        <tr>
+            <td class="file-status">tests/test_encoder.py</td>
+            <td><span class="badge badge-amber">Standalone</span></td>
+            <td>Not a pytest test — it's a standalone script. Cannot be run with <code>pytest</code>.</td>
+        </tr>
+        <tr>
+            <td class="file-status">tests/test_embeddings.py</td>
+            <td><span class="badge badge-amber">Standalone</span></td>
+            <td>Not a pytest test. Also imports from wrong path (<code>from embeddings import ...</code>).</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="card card-red">
+    <strong>Summary: 9 out of 20 Python files are completely empty (0 bytes).</strong> The project structure was planned but roughly half was never implemented. Working logic is concentrated in 6 files: <code>encoder.py</code>, <code>similarity.py</code>, <code>fine_tune.py</code>, <code>dataset.py</code>, <code>routes.py</code>, and <code>build_gallery.py</code>.
+</div>
+
+<!-- ───────────────────────────────────────────────── -->
+<h2 id="s5"><span class="section-num">5.</span> Technology Review — Current Stack vs Market Alternatives</h2>
+
+<h3>5.1 — Embedding Model</h3>
+<table>
+    <thead>
+        <tr><th>Library / Model</th><th>What It Does</th><th>Pros</th><th>Cons</th><th>Verdict for Our Use Case</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>DINOv2 ViT-S/14</strong><br><span class="badge badge-blue">Current</span></td>
+            <td>Self-supervised vision transformer from Meta. 384-dim embeddings. 21M params.</td>
+            <td>Excellent visual feature extraction; strong on texture/shape; no labels needed for pretraining</td>
+            <td>Generic features — doesn't understand plant diseases without fine-tuning; 224px input is low for detail</td>
+            <td class="verdict" style="background:var(--green-bg); color:var(--green);">Good choice — keep it. Best general-purpose vision encoder available. Fine-tuning addresses domain gap.</td>
+        </tr>
+        <tr>
+            <td><strong>DINOv2 ViT-B/14</strong></td>
+            <td>Larger variant. 768-dim embeddings. 86M params.</td>
+            <td>More capacity for subtle disease features; better accuracy on fine-grained tasks</td>
+            <td>4x heavier than ViT-S; slower inference</td>
+            <td class="verdict" style="background:var(--amber-bg);">Consider upgrading if ViT-S accuracy is insufficient. Test before committing — diminishing returns on small datasets.</td>
+        </tr>
+        <tr>
+            <td><strong>CLIP (OpenAI)</strong></td>
+            <td>Vision-language model. Can match images to text descriptions.</td>
+            <td>Can do zero-shot: "Is this leaf rust?" without any training; understands semantic concepts</td>
+            <td>Weaker on fine-grained visual similarity than DINOv2; 151M+ params; optimized for text-image not image-image</td>
+            <td class="verdict" style="background:var(--red-bg); color:var(--red);">Not recommended as primary. DINOv2 outperforms CLIP on visual similarity tasks. CLIP is better for captioning.</td>
+        </tr>
+        <tr>
+            <td><strong>PlantCLIP / PlantNet models</strong></td>
+            <td>Domain-specific models pre-trained on plant/disease datasets.</td>
+            <td>Already understands plant features; less fine-tuning needed</td>
+            <td>Fewer available; less community support; may not cover crop diseases specifically</td>
+            <td class="verdict" style="background:var(--amber-bg);">Worth investigating as a supplementary comparison, but DINOv2 + fine-tuning is the stronger approach with our data.</td>
+        </tr>
+        <tr>
+            <td><strong>EfficientNet-B0/B3</strong></td>
+            <td>CNN-based classifier. Lightweight.</td>
+            <td>Very fast; small model size; good for mobile deployment</td>
+            <td>CNNs are weaker than ViTs on texture/shape similarity; needs classification head, less flexible</td>
+            <td class="verdict" style="background:var(--red-bg); color:var(--red);">Not recommended. ViTs are superior for similarity-based tasks. Would be a downgrade.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>5.2 — Similarity Search</h3>
+<table>
+    <thead>
+        <tr><th>Library</th><th>What It Does</th><th>Current Usage</th><th>Verdict</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>NumPy cosine similarity</strong><br><span class="badge badge-blue">Current</span></td>
+            <td>Manual dot product / norm calculation in a Python loop</td>
+            <td>Loops through every embedding one by one in <code>routes.py</code> and <code>similarity.py</code></td>
+            <td class="verdict" style="background:var(--red-bg); color:var(--red);">Inefficient. O(N) Python loop per query. Acceptable for 1,639 images, will break at scale.</td>
+        </tr>
+        <tr>
+            <td><strong>FAISS</strong> (Facebook)</td>
+            <td>Optimized vector similarity search. GPU support. Billion-scale.</td>
+            <td><span style="color:var(--red); font-weight:600;">Listed in Requirements.txt but NEVER used in any code file.</span></td>
+            <td class="verdict" style="background:var(--green-bg); color:var(--green);">Should be used. Already a dependency. Replace NumPy loops with FAISS IndexFlatIP for exact cosine search — 10-100x faster.</td>
+        </tr>
+        <tr>
+            <td><strong>ChromaDB / Qdrant</strong></td>
+            <td>Vector databases with persistence, filtering, metadata.</td>
+            <td>Not used</td>
+            <td class="verdict" style="background:var(--amber-bg);">Overkill for current scale (1,639 images). FAISS is sufficient. Consider if gallery grows to 50K+.</td>
+        </tr>
+        <tr>
+            <td><strong>scikit-learn cosine_similarity</strong></td>
+            <td>Vectorized cosine similarity on matrices.</td>
+            <td>Listed in Requirements.txt but not used</td>
+            <td class="verdict" style="background:var(--amber-bg);">Quick improvement over manual loops. One-liner: <code>cosine_similarity(query.reshape(1,-1), gallery)</code>. But FAISS is better.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>5.3 — Fine-Tuning / Training</h3>
+<table>
+    <thead>
+        <tr><th>Approach</th><th>What It Does</th><th>Current Usage</th><th>Verdict</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Triplet Loss</strong><br><span class="badge badge-blue">Current</span></td>
+            <td>Pushes anchor closer to positive, farther from negative. Margin = 0.3.</td>
+            <td>Used with random triplet sampling in <code>fine_tune.py</code></td>
+            <td class="verdict" style="background:var(--amber-bg);">Works, but random sampling is inefficient. Many "easy" triplets contribute zero gradient. Needs hard-negative mining.</td>
+        </tr>
+        <tr>
+            <td><strong>ArcFace / CosFace Loss</strong></td>
+            <td>Angular margin loss. Specifically designed for verification tasks ("is this the same class?").</td>
+            <td>Not used</td>
+            <td class="verdict" style="background:var(--green-bg); color:var(--green);">Best fit for our corrected requirement (1-to-1 verification). Used in face verification — directly analogous to "does this image match this symptom?"</td>
+        </tr>
+        <tr>
+            <td><strong>Supervised Contrastive Loss (SupCon)</strong></td>
+            <td>Pulls all same-class samples together, pushes different classes apart. More stable than triplet.</td>
+            <td>Not used</td>
+            <td class="verdict" style="background:var(--green-bg); color:var(--green);">Strong alternative to triplet loss. Better gradient signal from all pairs in a batch, not just triplets.</td>
+        </tr>
+        <tr>
+            <td><strong>pytorch-metric-learning</strong></td>
+            <td>Library with 20+ loss functions, miners (hard negative), samplers.</td>
+            <td>Not used</td>
+            <td class="verdict" style="background:var(--green-bg); color:var(--green);">Strongly recommended. Provides ArcFace, hard-negative mining, and proper evaluation — replaces most custom training code.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>5.4 — API &amp; Serving</h3>
+<table>
+    <thead>
+        <tr><th>Component</th><th>Current</th><th>Best Alternative</th><th>Verdict</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Web framework</td>
+            <td>FastAPI</td>
+            <td>FastAPI is the best choice</td>
+            <td class="verdict" style="background:var(--green-bg); color:var(--green);">Keep FastAPI. It's the standard for Python ML APIs. Async support, auto-docs, Pydantic validation.</td>
+        </tr>
+        <tr>
+            <td>Model inference</td>
+            <td>Raw PyTorch in request handler</td>
+            <td>ONNX Runtime or TorchScript</td>
+            <td class="verdict" style="background:var(--amber-bg);">ONNX export (planned but empty file) would give 2-3x inference speedup. Worth doing for production.</td>
+        </tr>
+        <tr>
+            <td>Image validation</td>
+            <td>OpenCV (brightness, blur, format)</td>
+            <td>OpenCV is the right tool</td>
+            <td class="verdict" style="background:var(--green-bg); color:var(--green);">Keep. The validation logic (blur detection, brightness check) is well implemented.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>5.5 — Summary: What to Keep, What to Change</h3>
+<table>
+    <thead>
+        <tr><th>Component</th><th>Current</th><th>Recommendation</th><th>Priority</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Embedding model</td><td>DINOv2 ViT-S/14</td><td><strong>Keep</strong></td><td>-</td></tr>
+        <tr><td>Web framework</td><td>FastAPI</td><td><strong>Keep</strong></td><td>-</td></tr>
+        <tr><td>Image validation</td><td>OpenCV</td><td><strong>Keep</strong></td><td>-</td></tr>
+        <tr><td>Core API logic</td><td>Global search across all symptoms</td><td><strong>Rewrite</strong> — single-symptom comparison</td><td><span class="badge badge-red">P0</span></td></tr>
+        <tr><td>Similarity search</td><td>NumPy loops</td><td><strong>Replace</strong> with FAISS (already installed)</td><td><span class="badge badge-amber">P1</span></td></tr>
+        <tr><td>Training loss</td><td>TripletMarginLoss</td><td><strong>Replace</strong> with ArcFace or SupCon via pytorch-metric-learning</td><td><span class="badge badge-amber">P1</span></td></tr>
+        <tr><td>Inference model</td><td>Baseline DINOv2 (ignores fine-tuned model)</td><td><strong>Fix</strong> — use fine-tuned model in API</td><td><span class="badge badge-red">P0</span></td></tr>
+        <tr><td>Evaluation metrics</td><td>Precision@K, Recall@K</td><td><strong>Replace</strong> with verification AUC, threshold calibration</td><td><span class="badge badge-amber">P1</span></td></tr>
+        <tr><td>Model export</td><td>Not implemented (empty file)</td><td><strong>Add</strong> ONNX export for production inference</td><td><span class="badge badge-green">P2</span></td></tr>
+    </tbody>
+</table>
+
+
+<!-- ───────────────────────────────────────────────── -->
+<h2 id="s6"><span class="section-num">6.</span> Architecture Issues &amp; Technical Debt</h2>
+
+<div class="card card-red">
+    <h3 style="margin-top:0">Issue 1: API Uses Baseline Model, Not Fine-Tuned <span class="badge badge-red">Critical</span></h3>
+    <p>After spending all of Week 2 on fine-tuning (achieving +27% precision improvement), the API endpoint <code>routes.py:17</code> still loads the base DINOv2 model:</p>
+    <pre>MODEL = load_dinov2()   # ← loads raw DINOv2, NOT the fine-tuned CropSimilarityModel</pre>
+    <p>The fine-tuned model (<code>data/embeddings/fine_tuned_model.pt</code>) is only used in <code>scripts/evaluate.py</code>. All API responses use the inferior baseline model.</p>
+</div>
+
+<div class="card card-red">
+    <h3 style="margin-top:0">Issue 2: Embeddings Were Built with Baseline, But Fine-Tuned Model Projects to Different Space <span class="badge badge-red">Critical</span></h3>
+    <p>The gallery embeddings in <code>data/embeddings/</code> are 384-dim vectors from baseline DINOv2. The fine-tuned model outputs 128-dim vectors (after the projection head). <strong>These are incompatible.</strong> You cannot compare a 128-dim fine-tuned query against 384-dim baseline gallery embeddings. If the API is switched to use the fine-tuned model, the entire gallery must be re-embedded.</p>
+</div>
+
+<div class="card card-amber">
+    <h3 style="margin-top:0">Issue 3: Image Transform Defined in 4 Separate Places <span class="badge badge-amber">Debt</span></h3>
+    <p>The identical Resize(256) → CenterCrop(224) → Normalize transform is copy-pasted in:</p>
+    <ul>
+        <li><code>src/model/encoder.py:11</code></li>
+        <li><code>src/model/fine_tune.py:74</code></li>
+        <li><code>src/api/routes.py:33</code></li>
+        <li><code>scripts/evaluate.py:16</code></li>
+    </ul>
+    <p>Any change to preprocessing must be made in all 4 places or results become silently inconsistent.</p>
+</div>
+
+<div class="card card-amber">
+    <h3 style="margin-top:0">Issue 4: Symptom Naming Inconsistency <span class="badge badge-amber">Debt</span></h3>
+    <p>Folder names in <code>data/raw/</code> use spaces ("Burnt appearance"), while <code>data/embeddings/</code> uses underscores ("Burnt_appearance"). Code works around this with <code>.replace(" ", "_")</code> in multiple places, but the API's <code>/gallery/{symptom_id}</code> endpoint requires the caller to guess the naming convention. This will cause bugs when integrating with the mobile app.</p>
+</div>
+
+<div class="card card-amber">
+    <h3 style="margin-top:0">Issue 5: No Configuration File <span class="badge badge-amber">Debt</span></h3>
+    <p><code>config/config.yaml</code> is empty. All values are hardcoded: thresholds (80/60), model name ("dinov2_vits14"), image size (224), embedding dims (384/128), batch size (16), learning rates, etc. Changing any parameter requires editing source code.</p>
+</div>
+
+<div class="card card-amber">
+    <h3 style="margin-top:0">Issue 6: No Authentication on API <span class="badge badge-amber">Production</span></h3>
+    <p>All endpoints are publicly accessible. In production, the <code>/compare</code> endpoint (which runs GPU inference) is vulnerable to abuse. Needs integration with the Strapi backend's auth or at minimum an API key.</p>
+</div>
+
+
+<!-- ───────────────────────────────────────────────── -->
+<h2 id="s7"><span class="section-num">7.</span> What's Working Well</h2>
+
+<div class="card card-green">
+    <p>The intern's work has several genuinely solid foundations worth preserving:</p>
+    <ul>
+        <li><strong>DINOv2 choice is correct</strong> — it's the best available vision encoder for this type of similarity task. Good research decision.</li>
+        <li><strong>Fine-tuning pipeline works</strong> — two-phase training with checkpoint resume is well-engineered. The +27% precision gain validates the approach.</li>
+        <li><strong>Image validation is thorough</strong> — blur detection (Laplacian variance), brightness checks, format validation, corruption checks. This is production-quality.</li>
+        <li><strong>Project structure is clean</strong> — clear separation of model, data, API, scripts, and tests. Good directory organization.</li>
+        <li><strong>FastAPI with Pydantic schemas</strong> — typed responses, auto-generated Swagger docs. Correct framework choice.</li>
+        <li><strong>TripletDataset</strong> — correct implementation of triplet sampling with transforms. Handles class imbalance implicitly.</li>
+        <li><strong>README documentation</strong> — detailed weekly progress, evaluation results, and threshold rationale. Shows methodical thinking.</li>
+    </ul>
+</div>
+
+
+<!-- ───────────────────────────────────────────────── -->
+<h2 id="s8"><span class="section-num">8.</span> Recommended Architecture — Corrected Design</h2>
+
+<h3>8.1 — Corrected API Contract</h3>
+
+<pre>
+# NEW: Compare against a specific symptom
+POST /compare/{symptom_id}
+  Body: multipart file upload
+
+  Response:
+  {
+    "status": "success",
+    "symptom": "Galls",
+    "similarity_pct": 73.4,
+    "recommendation": "Monitor",
+    "recommendation_detail": "Moderate confidence — observe and recheck in a few days",
+    "confidence": {
+      "gallery_size": 13,
+      "gallery_quality": "low",       // &lt;20 images = low confidence gallery
+      "note": "This symptom has few reference images. Result may be less reliable."
+    },
+    "thresholds": {
+      "take_action": "&ge;80%",
+      "monitor": "60-79%",
+      "low_concern": "&lt;60%"
+    }
+  }
+
+# KEEP: Health, Gallery listing, Symptom detail
+GET /health
+GET /gallery
+GET /gallery/{symptom_id}
+</pre>
+
+<h3>8.2 — Corrected Comparison Logic</h3>
+<pre>
+# Instead of comparing against ALL symptoms:
+def compare_against_symptom(query_embedding, symptom_id, gallery):
+    """Compare query image against ONE symptom's reference gallery."""
+
+    symptom_embeddings = gallery[symptom_id]  # Only this symptom
+
+    # Compute similarity against each reference image in this symptom
+    similarities = faiss_index.search(query_embedding, k=len(symptom_embeddings))
+
+    # Aggregate: use MEAN of top-N similarities (not just max)
+    # This is more robust than a single best-match score
+    top_n = min(5, len(symptom_embeddings))
+    avg_similarity = np.mean(sorted(similarities, reverse=True)[:top_n])
+
+    return {
+        "similarity_pct": round(avg_similarity, 1),
+        "recommendation": get_recommendation(avg_similarity)
+    }
+</pre>
+
+<h3>8.3 — Corrected Evaluation Approach</h3>
+<table>
+    <thead>
+        <tr><th>Current (Retrieval Metrics)</th><th>Needed (Verification Metrics)</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Precision@5: "Of top 5 results, how many are correct symptom?"</td>
+            <td><strong>Verification Accuracy</strong>: "When I compare image X against symptom Y, does the score correctly indicate match/no-match?"</td>
+        </tr>
+        <tr>
+            <td>Recall@5: "Of all correct images, how many appeared in top 5?"</td>
+            <td><strong>AUC-ROC</strong>: "How well does the similarity score separate true matches from false matches across all thresholds?"</td>
+        </tr>
+        <tr>
+            <td>—</td>
+            <td><strong>Threshold Calibration</strong>: "At 80% similarity, what % of the time is it actually the correct symptom?"</td>
+        </tr>
+        <tr>
+            <td>—</td>
+            <td><strong>False Positive Rate</strong>: "When comparing a Galls image against the Leaf Rust gallery, how often does it incorrectly score above 80%?"</td>
+        </tr>
+    </tbody>
+</table>
+
+
+<!-- ───────────────────────────────────────────────── -->
+<h2 id="s9"><span class="section-num">9.</span> Priority Action Items</h2>
+
+<h3><span class="badge badge-red">P0 — Must Fix (Blocks Correct Functionality)</span></h3>
+<table>
+    <thead><tr><th>#</th><th>Item</th><th>Detail</th></tr></thead>
+    <tbody>
+        <tr>
+            <td>1</td>
+            <td><strong>Rewrite <code>/compare</code> to accept symptom_id</strong></td>
+            <td>Change from <code>POST /compare</code> to <code>POST /compare/{symptom_id}</code>. Compare only against the specified symptom's gallery. Return single similarity score.</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td><strong>Load fine-tuned model in API</strong></td>
+            <td>Replace <code>load_dinov2()</code> in <code>routes.py</code> with <code>CropSimilarityModel</code> loading <code>fine_tuned_model.pt</code>. All that training work is currently wasted.</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td><strong>Rebuild gallery embeddings with fine-tuned model</strong></td>
+            <td>Current .npy files are 384-dim (baseline). Fine-tuned model outputs 128-dim. Gallery must be re-embedded with the fine-tuned model to be compatible.</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td><strong>Update response schema</strong></td>
+            <td>Replace <code>CompareResponse</code> (multi-match list) with a single-symptom verification response.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3><span class="badge badge-amber">P1 — Should Fix (Significant Improvements)</span></h3>
+<table>
+    <thead><tr><th>#</th><th>Item</th><th>Detail</th></tr></thead>
+    <tbody>
+        <tr>
+            <td>5</td>
+            <td><strong>Use FAISS for similarity search</strong></td>
+            <td>Already in Requirements.txt. Build a FAISS index per symptom. Replace Python loops. Load indices at startup.</td>
+        </tr>
+        <tr>
+            <td>6</td>
+            <td><strong>Centralize image transform</strong></td>
+            <td>Define once in <code>src/data/preprocessing.py</code> (currently empty), import everywhere. Prevents silent inconsistencies.</td>
+        </tr>
+        <tr>
+            <td>7</td>
+            <td><strong>Add verification-based evaluation</strong></td>
+            <td>Implement AUC-ROC, threshold calibration, and false positive rate metrics in <code>src/utils/metrics.py</code> (currently empty). Test: "When comparing a Galls image against non-Galls gallery, does it correctly score low?"</td>
+        </tr>
+        <tr>
+            <td>8</td>
+            <td><strong>Populate config.yaml</strong></td>
+            <td>Externalize thresholds, model path, embedding dims, image size, batch size. Currently all hardcoded.</td>
+        </tr>
+        <tr>
+            <td>9</td>
+            <td><strong>Normalize symptom naming</strong></td>
+            <td>Pick one convention (underscores recommended). Rename <code>data/raw/</code> folders to match. Remove all <code>.replace(" ", "_")</code> hacks.</td>
+        </tr>
+        <tr>
+            <td>10</td>
+            <td><strong>Consider ArcFace loss for re-training</strong></td>
+            <td>Better suited for verification ("is this the same?") than triplet loss. Use <code>pytorch-metric-learning</code> library.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3><span class="badge badge-green">P2 — Nice to Have (Production Readiness)</span></h3>
+<table>
+    <thead><tr><th>#</th><th>Item</th><th>Detail</th></tr></thead>
+    <tbody>
+        <tr>
+            <td>11</td>
+            <td><strong>ONNX export for inference</strong></td>
+            <td>Implement <code>scripts/export_onnx.py</code>. Use ONNX Runtime in API instead of PyTorch for 2-3x speedup.</td>
+        </tr>
+        <tr>
+            <td>12</td>
+            <td><strong>Add API authentication</strong></td>
+            <td>Integrate with Strapi backend's JWT auth or add API key middleware.</td>
+        </tr>
+        <tr>
+            <td>13</td>
+            <td><strong>Clean up empty files</strong></td>
+            <td>Either implement or remove the 9 empty placeholder files. They create false expectations.</td>
+        </tr>
+        <tr>
+            <td>14</td>
+            <td><strong>Convert standalone test scripts to pytest</strong></td>
+            <td><code>test_encoder.py</code> and <code>test_embeddings.py</code> are scripts, not tests. Rewrite as proper pytest fixtures.</td>
+        </tr>
+        <tr>
+            <td>15</td>
+            <td><strong>Add confidence indicator for small galleries</strong></td>
+            <td>Galls has 13 images, Stem cracking has 12. Flag to user: "Result may be less reliable — few reference images for this symptom."</td>
+        </tr>
+    </tbody>
+</table>
+
+<hr>
+
+<div class="card" style="border: 2px solid var(--purple); text-align:center; padding:1.5rem;">
+    <p style="font-size:1.1rem; font-weight:600; color:var(--purple); margin-bottom:0.5rem;">Bottom Line</p>
+    <p>The foundation is sound — DINOv2, FastAPI, fine-tuning pipeline, image validation are all good choices. But the <strong>core product logic is solving the wrong problem</strong>. The system searches across all symptoms when it should verify against one. Items #1-4 (P0) fix this fundamental mismatch. Everything else is optimization on a corrected foundation.</p>
+</div>
+
+</body>
+</html>
